@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Admin Dashboard - Panimalar Bus Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+  body { margin:0; font-family:sans-serif; background:#0f172a; color:#f1f5f9; }
+  header { background:#1e293b; padding:10px; display:flex; justify-content:space-between; align-items:center; color:#38bdf8; }
+  button, input, select { padding:6px 10px; margin:4px; border:none; border-radius:5px; }
+  button { background:#3b82f6; color:white; cursor:pointer; }
+  button:hover { background:#2563eb; }
+  .container { display:flex; height:calc(100vh - 50px); }
+  .sidebar { width:320px; overflow-y:auto; background:#1e293b; padding:10px; }
+  .section { margin-bottom:20px; }
+  #map { flex:1; }
+  .card { background:#334155; padding:10px; margin:5px 0; border-radius:8px; }
+  .card button { background:#ef4444; margin-left:5px; }
+  .edit-btn { background:#f59e0b; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Admin Dashboard</h1>
+  <button onclick="logout()">Logout</button>
+</header>
+<div class="container">
+  <div class="sidebar">
+    <div class="section">
+      <h3>Add Bus</h3>
+      <input type="text" id="busNumber" placeholder="Bus Number" />
+      <input type="text" id="route" placeholder="Route Name" />
+      <select id="driverSelect"></select>
+      <button onclick="addBus()">Add Bus</button>
+      <div id="busList"></div>
+    </div>
+    <div class="section">
+      <h3>Drivers</h3>
+      <input type="text" id="driverName" placeholder="Driver Name" />
+      <button onclick="addDriver()">Add Driver</button>
+      <div id="driverList"></div>
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const socket = io();
+let buses = [];
+let drivers = [];
+let markers = {};
+
+let map = L.map('map').setView([13.0827, 80.2707], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+// Receive buses from server
+socket.on("buses", (data) => {
+  buses = data;
+  renderBuses();
+  updateMapMarkers();
+});
+
+// Receive drivers from server
+socket.on("drivers", (data) => {
+  drivers = data;
+  renderDrivers();
+});
+
+// Receive live location updates
+socket.on("locationUpdate", ({ busId, lat, lng }) => {
+  if (markers[busId]) {
+    markers[busId].setLatLng([lat, lng]);
+  }
+});
+
+// Logout
+function logout() {
+  window.location.href = "login.html";
+}
+
+// Add driver with duplicate protection
+function addDriver() {
+  const name = document.getElementById('driverName').value.trim();
+  if (!name) return alert("Enter driver name");
+
+  if (drivers.some(d => d.toLowerCase() === name.toLowerCase())) {
+    return alert("Driver already exists!");
+  }
+
+  drivers.push(name);
+  renderDrivers();
+  socket.emit("addDriver", name);
+  document.getElementById('driverName').value = '';
+}
+
+// Delete driver
+function deleteDriver(name) {
+  if (confirm(`Delete driver ${name}?`)) {
+    drivers = drivers.filter(d => d !== name);
+    renderDrivers();
+    socket.emit("deleteDriver", name);
+  }
+}
+
+// Render drivers
+function renderDrivers() {
+  const driverSelect = document.getElementById('driverSelect');
+  const driverList = document.getElementById('driverList');
+  driverList.innerHTML = '';
+  driverSelect.innerHTML = '<option value="">Select Driver</option>';
+  drivers.forEach(d => {
+    driverSelect.innerHTML += `<option value="${d}">${d}</option>`;
+    driverList.innerHTML += `<div class="card">${d} 
+      <button onclick="deleteDriver('${d}')">Delete</button></div>`;
+  });
+}
+
+// Add bus with duplicate protection
+function addBus() {
+  const id = document.getElementById('busNumber').value.trim();
+  const name = document.getElementById('route').value.trim();
+  const driver = document.getElementById('driverSelect').value;
+
+  if (!id || !name || !driver) return alert("Fill all fields");
+
+  if (buses.some(b => b.id.toLowerCase() === id.toLowerCase())) {
+    return alert("Bus ID already exists!");
+  }
+
+  buses.push({ id, name, driver });
+  renderBuses();
+  socket.emit("addBus", { id, name, driver });
+
+  document.getElementById('busNumber').value = '';
+  document.getElementById('route').value = '';
+}
+
+// Edit bus
+function editBus(id) {
+  const bus = buses.find(b => b.id === id);
+  if (!bus) return;
+
+  const newName = prompt("Enter new route name:", bus.name);
+  const newDriver = prompt("Enter new driver name:", bus.driver);
+
+  if (newName && newDriver) {
+    bus.name = newName;
+    bus.driver = newDriver;
+    renderBuses();
+    socket.emit("editBus", { id, name: newName, driver: newDriver });
+  }
+}
+
+// Delete bus
+function deleteBus(id) {
+  if (confirm("Delete this bus?")) {
+    buses = buses.filter(b => b.id !== id);
+    renderBuses();
+    socket.emit("deleteBus", id);
+  }
+}
+
+// Render buses
+function renderBuses() {
+  const busList = document.getElementById('busList');
+  busList.innerHTML = '';
+  buses.forEach(b => {
+    busList.innerHTML += `<div class="card">
+      <strong>${b.id}</strong><br/>${b.name}<br/>Driver: ${b.driver}
+      <button class="edit-btn" onclick="editBus('${b.id}')">Edit</button>
+      <button onclick="deleteBus('${b.id}')">Delete</button>
+    </div>`;
+  });
+}
+
+// Update map markers for buses
+function updateMapMarkers() {
+  buses.forEach(b => {
+    if (b.lat && b.lng) {
+      if (!markers[b.id]) {
+        markers[b.id] = L.marker([b.lat, b.lng])
+          .addTo(map)
+          .bindPopup(`${b.id} - ${b.name}`);
+      } else {
+        markers[b.id].setLatLng([b.lat, b.lng]);
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>

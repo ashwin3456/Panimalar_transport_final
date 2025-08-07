@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About | Panimalar Bus Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .fade-up {
+      opacity: 0;
+      transform: translateY(30px);
+      animation: fadeUp 1s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #60a5fa;
+      position: relative;
+      display: inline-block;
+    }
+
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 4px;
+      background: #60a5fa;
+      margin: 8px auto 0;
+      border-radius: 2px;
+    }
+
+    .developer-card:hover {
+      transform: translateY(-5px);
+      transition: all 0.3s ease-in-out;
+      box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .feature-box:hover {
+      background-color: #1e3a8a;
+      transform: scale(1.02);
+      transition: 0.3s ease;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+  <!-- About Section -->
+  <section class="p-10 bg-gray-900 fade-up">
+    <h2 class="text-3xl section-title text-center mb-6">🚍 About Us</h2>
+    <div class="max-w-5xl mx-auto text-center text-gray-300">
+      <p class="mb-4">
+        The <strong>Panimalar Bus Tracker</strong> is a cutting-edge web platform aimed at transforming college transport management. This project simplifies real-time bus tracking, route planning, and monitoring across Panimalar Engineering College's transportation system.
+      </p>
+      <p class="mb-4">
+        Designed with accessibility and efficiency in mind, this system benefits all stakeholders—students, staff, and transport administrators—by delivering live updates, smooth coordination, and transparent management.
+      </p>
+
+      <div class="my-8">
+        <h3 class="text-xl font-semibold text-blue-400 mb-2">🎯 Our Mission</h3>
+        <p class="mb-4">
+          To provide a secure, user-friendly, and technologically advanced bus tracking solution that ensures safety, punctuality, and transparency in college transportation.
+        </p>
+
+        <h3 class="text-xl font-semibold text-blue-400 mb-2">👁️ Our Vision</h3>
+        <p>
+          To set the benchmark for smart mobility systems within educational institutions across India, enabling smarter campuses and a safer commute for all.
+        </p>
+      </div>
+
+      <div class="my-10">
+        <h3 class="text-xl font-semibold text-blue-400 mb-4">💡 Why Choose Us?</h3>
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto text-left list-disc list-inside">
+          <li>Student-centric, intuitive dashboards</li>
+          <li>Admin tools to assign, monitor, and manage routes & drivers</li>
+          <li>Secure Firebase-based authentication</li>
+          <li>Accessible across all devices — mobile-first responsive design</li>
+          <li>Developed by students for students — tailored to campus needs</li>
+        </ul>
+      </div>
+
+      <div class="mt-10">
+        <h3 class="text-xl font-semibold text-blue-400 mb-4">🌐 Key Features</h3>
+        <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 max-w-4xl mx-auto">
+          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">📍 Real-time Bus Tracking</li>
+          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">🛡️ Role-Based Dashboards (Admin, Driver, Student)</li>
+          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">🗺️ Interactive Route Maps with Bus Stops</li>
+          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">🔐 Secure Firebase Authentication</li>
+          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">📱 Responsive Mobile Support</li>
+          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">⚙️ Admin Panel for Driver/Route Management</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Developers Section -->
+  <section class="p-10 bg-gray-800 fade-up">
+    <h2 class="text-3xl section-title text-center mb-10">👨‍💻 Meet the Developers of A-Squad</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+      <!-- Developer Cards -->
+      <div class="bg-gray-900 p-6 rounded-xl text-center shadow developer-card">
+        <img src="dev1.jpg" alt="Annamalai R" class="w-32 h-32 mx-auto rounded-full mb-4 object-cover" />
+        <h4 class="text-xl font-bold text-blue-300">Annamalai R</h4>
+        <p class="text-sm text-gray-400">Roll No: 2024PECAI337</p>
+      </div>
+      <div class="bg-gray-900 p-6 rounded-xl text-center shadow developer-card">
+        <img src="dev2.jpg" alt="Ajay Kumar N" class="w-32 h-32 mx-auto rounded-full mb-4 object-cover" />
+        <h4 class="text-xl font-bold text-blue-300">Ajay Kumar N</h4>
+        <p class="text-sm text-gray-400">Roll No: 2024PECAI326</p>
+      </div>
+      <div class="bg-gray-900 p-6 rounded-xl text-center shadow developer-card">
+        <img src="dev3.jpg" alt="Aswin V" class="w-32 h-32 mx-auto rounded-full mb-4 object-cover" />
+        <h4 class="text-xl font-bold text-blue-300">Aswin V</h4>
+        <p class="text-sm text-gray-400">Roll No: 2024PECAI345</p>
+      </div>
+      <div class="bg-gray-900 p-6 rounded-xl text-center shadow developer-card">
+        <img src="dev4.jpg" alt="Benis Antony Amalan J" class="w-32 h-32 mx-auto rounded-full mb-4 object-cover" />
+        <h4 class="text-xl font-bold text-blue-300">Benis Antony Amalan J</h4>
+        <p class="text-sm text-gray-400">Roll No: 2024PECAI348</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gray-950 text-gray-300 text-center p-4 mt-10">
+    &copy; 2025 Panimalar Engineering College | A-Squad Bus Tracker Project | Second Year AI&DS
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Panimalar Bus Tracker</title>
+  <link rel="icon" href="bus-icon.png" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+    }
+
+    /* Header */
+    header {
+      background: #222;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+    }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      margin: 0;
+      padding: 0;
+      gap: 15px;
+    }
+
+    nav ul li a {
+      color: white;
+      text-decoration: none;
+    }
+
+    .btn {
+      background: #ff9800;
+      padding: 5px 10px;
+      border-radius: 4px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 50px 20px;
+      background: #333;
+    }
+
+    .start {
+      padding: 10px 20px;
+      background: #ff9800;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #111;
+      font-weight: bold;
+    }
+
+    /* Features */
+    .features {
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .feature-container {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .feature-card {
+      background: #222;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 300px;
+      text-align: center;
+    }
+
+    .feature-card img {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    /* Dashboards */
+    .roles {
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .dashboard-grid {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .dashboard-box {
+      background: #222;
+      padding: 20px;
+      border-radius: 8px;
+      width: 250px;
+      text-align: left;
+    }
+
+    /* Footer */
+    footer {
+      background: #000;
+      text-align: center;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    /* ------------------
+       MOBILE VIEW
+    -------------------*/
+    @media (max-width: 768px) {
+      nav ul {
+        display: none;
+        flex-direction: column;
+        background: #222;
+        position: absolute;
+        top: 60px;
+        right: 0;
+        width: 200px;
+        padding: 10px;
+      }
+
+      nav.active ul {
+        display: flex;
+      }
+
+      .menu-toggle {
+        display: block;
+        font-size: 1.5rem;
+        cursor: pointer;
+      }
+
+      .feature-container,
+      .dashboard-grid {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .menu-toggle {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">🚍 Panimalar Bus Tracker</div>
+    <div class="menu-toggle" onclick="toggleMenu()">☰</div>
+    <nav id="navbar">
+      <ul>
+        <li><a href="#">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#roles">Dashboards</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="login1.html" class="btn">Login</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <h1>Smart Bus Tracking for Panimalar Engineering College</h1>
+    <p>Track, manage, and monitor college bus routes in real-time.</p>
+    <button onclick="location.href='login1.html'" class="start">Get Started</button>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <h2>🚀 Key Features</h2>
+    <div class="feature-container">
+      <div class="feature-card">
+        <img src="admin-feature.jpg" alt="Admin Features" />
+        <h3>Admin Control Panel</h3>
+        <p>Manage routes, assign drivers, and monitor bus activity easily.</p>
+      </div>
+      <div class="feature-card">
+        <img src="driver-feature.jpg" alt="Driver Features" />
+        <h3>Driver Live Location</h3>
+        <p>Drivers can start trips and share GPS data in real time.</p>
+      </div>
+      <div class="feature-card">
+        <img src="student-feature.jpg" alt="Student Features" />
+        <h3>Student Bus Tracker</h3>
+        <p>Students can view live bus locations and find nearest stops.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboards Overview -->
+  <section class="roles" id="roles">
+    <h2>🔑 Role-Based Dashboards</h2>
+    <div class="dashboard-grid">
+      <div class="dashboard-box">
+        <h3>Admin</h3>
+        <ul>
+          <li>➕ Add/Edit Bus Routes</li>
+          <li>👨‍✈️ Assign Drivers</li>
+          <li>🗺️ View Map of Stops</li>
+        </ul>
+      </div>
+      <div class="dashboard-box">
+        <h3>Driver</h3>
+        <ul>
+          <li>📍 Share Live Location</li>
+          <li>🚌 Start & End Trips</li>
+          <li>📲 Update Route Info</li>
+        </ul>
+      </div>
+      <div class="dashboard-box">
+        <h3>Student</h3>
+        <ul>
+          <li>📡 Track Buses on Map</li>
+          <li>🔍 Search Routes</li>
+          <li>⏱️ View Timings & Stops</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Footer -->
+  <footer>
+    <div class="contact" id="contact">
+      <p><strong>Contact:</strong></p>
+      <p>Email: <a href="mailto:transport@panimalar.ac.in">transport@panimalar.ac.in</a></p>
+      <p>Phone: +91 44 2649 4442</p>
+      <p>Address: Panimalar Engineering College, Poonamallee, Chennai - 600123</p>
+    </div>
+    <p>&copy; 2025 Panimalar Engineering College. All rights reserved.</p>
+  </footer>
+
+  <script>
+    function toggleMenu() {
+      document.getElementById("navbar").classList.toggle("active");
+    }
+  </script>
+</body>
+</html>

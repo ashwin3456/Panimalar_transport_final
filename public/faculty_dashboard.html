@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student & Faculty Dashboard | Panimalar Bus Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #0f172a;
+      color: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background-color: #1e293b;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      color: #38bdf8;
+    }
+    #search-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      background-color: #1e293b;
+      flex-wrap: wrap;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #334155;
+      background-color: #0f172a;
+      color: #f8fafc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #2563eb; }
+    #map { flex: 1; }
+    #message-box {
+      padding: 10px;
+      background-color: #1e293b;
+      display: flex;
+      gap: 10px;
+    }
+    #message {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #334155;
+      background-color: #0f172a;
+      color: white;
+      border-radius: 5px;
+    }
+    /* Modal Popup */
+    #busModal {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      overflow: auto;
+      background-color: rgba(15, 23, 42, 0.8);
+    }
+    #busModalContent {
+      background-color: #1e293b;
+      margin: 10% auto;
+      padding: 20px;
+      border: 1px solid #334155;
+      width: 90%; max-width: 400px;
+      border-radius: 10px;
+      color: white;
+    }
+    .bus-option {
+      padding: 10px;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+    }
+    .bus-option:hover { background-color: #334155; }
+    .close-btn {
+      float: right;
+      font-size: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<header>Panimalar Bus Tracker - Student/Faculty Dashboard</header>
+
+<div id="search-bar">
+  <input type="text" id="searchInput" placeholder="Search by bus number or name..." />
+  <button onclick="searchBus()">Search</button>
+  <button onclick="startVoice()">🎙️ Start</button>
+  <button onclick="stopVoice()">🛑 Stop</button>
+  <button onclick="openBusPopup()">🚌 Select Bus</button>
+</div>
+
+<div id="map"></div>
+
+<div id="message-box">
+  <input type="text" id="message" placeholder="Send message to driver..." />
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<!-- Modal Popup -->
+<div id="busModal">
+  <div id="busModalContent">
+    <span class="close-btn" onclick="closeBusPopup()">&times;</span>
+    <h3>Select a Bus</h3>
+    <div id="busList"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([13.0827, 80.2707], 13);
+  const adminBuses = [
+    { id: "Bus101", name: "CSE Route", lat: 13.0827, lng: 80.2707 },
+    { id: "Bus102", name: "ECE Route", lat: 13.07, lng: 80.25 },
+    { id: "Bus103", name: "MECH Route", lat: 13.06, lng: 80.28 }
+  ];
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  let driverMarker = null;
+  let driverIndex = 0;
+  let livePath = [];
+  let simulationInterval;
+
+  function searchBus() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const found = adminBuses.find(bus =>
+      bus.id.toLowerCase().includes(query) || bus.name.toLowerCase().includes(query)
+    );
+
+    if (found) {
+      map.setView([found.lat, found.lng], 15);
+      if (driverMarker) map.removeLayer(driverMarker);
+      simulateLiveMovement(found);
+    } else {
+      alert("No matching bus found.");
+    }
+  }
+
+  function simulateLiveMovement(bus) {
+    clearInterval(simulationInterval);
+    livePath = [
+      [bus.lat, bus.lng],
+     
+    ];
+    driverIndex = 0;
+
+    driverMarker = L.marker(livePath[0]).addTo(map)
+      .bindPopup(`${bus.id} - ${bus.name}`).openPopup();
+
+    simulationInterval = setInterval(() => {
+      driverIndex = (driverIndex + 1) % livePath.length;
+      driverMarker.setLatLng(livePath[driverIndex]);
+      map.setView(livePath[driverIndex]);
+    }, 1500);
+  }
+
+  function sendMessage() {
+    const msg = document.getElementById('message').value;
+    if (msg.trim()) {
+      alert("Message sent to driver: " + msg);
+      console.log("Message sent to driver:", msg);
+      document.getElementById('message').value = "";
+    }
+  }
+
+  // Voice Search
+  let recognition;
+  function startVoice() {
+    if (!('webkitSpeechRecognition' in window)) {
+      alert("Speech recognition not supported in this browser.");
+      return;
+    }
+
+    recognition = new webkitSpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onresult = function (event) {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById("searchInput").value = transcript;
+    };
+
+    recognition.onerror = function (event) {
+      console.error("Speech recognition error:", event.error);
+    };
+
+    recognition.start();
+  }
+
+  function stopVoice() {
+    if (recognition) recognition.stop();
+  }
+
+  // Modal functions
+  function openBusPopup() {
+    const busList = document.getElementById('busList');
+    busList.innerHTML = '';
+
+    adminBuses.forEach(bus => {
+      const div = document.createElement('div');
+      div.className = 'bus-option';
+      div.innerText = `${bus.id} - ${bus.name}`;
+      div.onclick = () => {
+        document.getElementById('searchInput').value = bus.id;
+        closeBusPopup();
+        searchBus();
+      };
+      busList.appendChild(div);
+    });
+
+    document.getElementById('busModal').style.display = 'block';
+  }
+
+  function closeBusPopup() {
+    document.getElementById('busModal').style.display = 'none';
+  }
+</script>
+</body>
+</html>
