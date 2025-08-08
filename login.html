@@ -1,298 +1,60 @@
+<!-- DASHBOARD 1: Admin Dashboard (admin.html) -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Admin Dashboard - Panimalar Bus Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <style>
-    body { margin:0; font-family:sans-serif; background:#111; color:#fff; }
-    header { background:#1a1a1a; padding:10px; display:flex; justify-content:space-between; align-items:center; }
-    header h1 { margin:0; font-size:20px; }
-    button, input, select { padding:6px 10px; margin:4px; border:none; border-radius:5px; }
-    button { background:#444; color:white; cursor:pointer; }
-    button:hover { background:#666; }
-    input, select { background:#222; color:white; }
-    .container { display:flex; height:calc(100vh - 50px); }
-    .sidebar { width:300px; overflow-y:auto; background:#1c1c1c; padding:10px; }
-    .section { margin-bottom:20px; }
-    #map { flex:1; }
-    .card { background:#2a2a2a; padding:10px; margin:5px 0; border-radius:8px; }
+    img.logo {
+      max-width: 200px;
+      height: auto;
+      display: block;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Admin Dashboard</h1>
-    <button onclick="logout()">Logout</button>
-  </header>
-  <div class="container">
-    <div class="sidebar">
-      <!-- Bus Management -->
-      <div class="section">
-        <h3>Add Bus</h3>
-        <input type="text" id="busNumber" placeholder="Bus Number" />
-        <input type="text" id="route" placeholder="Route Name" />
-        <select id="driverSelect"></select>
-        <button onclick="addBus()">Add Bus</button>
-        <div id="busList"></div>
-      </div>
+  <img src="163efa95-7c84-4fc4-9356-ff5cbe4ee2cd.png" alt="Logo" class="logo">
+  <h1>Admin Dashboard</h1>
 
-      <!-- Driver Management -->
-      <div class="section">
-        <h3>Add Driver</h3>
-        <input type="text" id="driverName" placeholder="Driver Name" />
-        <button onclick="addDriver()">Add Driver</button>
-        <div id="driverList"></div>
-      </div>
+  <form id="addBusForm">
+    <input placeholder="Bus Name" id="busName" required>
+    <input placeholder="Bus No" id="busNo" required>
+    <input placeholder="Driver ID" id="driverId" required>
+    <button type="submit">Add Bus</button>
+  </form>
 
-      <!-- Stop Management -->
-      <div class="section">
-        <h3>Stops</h3>
-        <input type="text" id="stopName" placeholder="Stop Name or Place" />
-        <button onclick="enableStopMode()">Click Map to Add</button>
-        <button onclick="addStopByName()">Add by Name</button>
-        <ul id="stopList"></ul>
-        <button onclick="clearStops()">Clear All Stops</button>
-      </div>
-    </div>
-    <div id="map"></div>
-  </div>
+  <form id="addStopForm">
+    <input placeholder="Stop Name" id="stopName" required>
+    <input placeholder="Latitude" id="stopLat" required>
+    <input placeholder="Longitude" id="stopLng" required>
+    <button type="submit">Add Stop</button>
+  </form>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([13.0827, 80.2707], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    const socket = io('http://localhost:3000');
 
-    const buses = [];
-    const drivers = [];
-    const polylines = [];
-    const busMarkers = {}; // Store stop markers per bus
-    const colors = ['red', 'blue', 'green', 'orange', 'purple'];
-    let selectedBusIndex = null;
-    let stopMode = false;
-
-    const busList = document.getElementById('busList');
-    const driverList = document.getElementById('driverList');
-    const driverSelect = document.getElementById('driverSelect');
-    const stopList = document.getElementById('stopList');
-
-    function logout() {
-      alert('Logged out!');
-      window.location.href = "login.html";
-    }
-
-    function addDriver() {
-      const name = document.getElementById('driverName').value.trim();
-      if (!name) return alert('Enter driver name');
-      drivers.push(name);
-      document.getElementById('driverName').value = '';
-      renderDrivers();
-    }
-
-    function renderDrivers() {
-      driverList.innerHTML = '';
-      driverSelect.innerHTML = '<option value="">Select Driver</option>';
-      drivers.forEach((driver, index) => {
-        const div = document.createElement('div');
-        div.className = 'card';
-        div.innerHTML = `
-          ${driver}<br/>
-          <button onclick="editDriver(${index})">Edit</button>
-          <button onclick="deleteDriver(${index})">Delete</button>
-        `;
-        driverList.appendChild(div);
-
-        const option = document.createElement('option');
-        option.value = driver;
-        option.textContent = driver;
-        driverSelect.appendChild(option);
+    document.getElementById('addBusForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('busName').value;
+      const number = document.getElementById('busNo').value;
+      const driver_id = document.getElementById('driverId').value;
+      await fetch('http://localhost:3000/admin/bus', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, number, driver_id })
       });
-    }
+    };
 
-    function editDriver(index) {
-      const newName = prompt('Edit driver name', drivers[index]);
-      if (newName) {
-        drivers[index] = newName;
-        renderDrivers();
-        renderBuses();
-      }
-    }
-
-    function deleteDriver(index) {
-      const name = drivers[index];
-      if (!confirm(`Delete driver ${name}?`)) return;
-      drivers.splice(index, 1);
-      renderDrivers();
-      buses.forEach(bus => {
-        if (bus.driver === name) bus.driver = '';
+    document.getElementById('addStopForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('stopName').value;
+      const lat = document.getElementById('stopLat').value;
+      const lng = document.getElementById('stopLng').value;
+      await fetch('http://localhost:3000/admin/stop', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, lat, lng })
       });
-      renderBuses();
-    }
-
-    function addBus() {
-      const number = document.getElementById('busNumber').value.trim();
-      const route = document.getElementById('route').value.trim();
-      const driver = driverSelect.value;
-      if (!number || !route || !driver) return alert('Fill all fields');
-
-      buses.push({ number, route, driver, stops: [] });
-      document.getElementById('busNumber').value = '';
-      document.getElementById('route').value = '';
-      driverSelect.value = '';
-      renderBuses();
-    }
-
-    function renderBuses() {
-      busList.innerHTML = '';
-      buses.forEach((bus, index) => {
-        const div = document.createElement('div');
-        div.className = 'card';
-        div.innerHTML = `
-          <strong>${bus.number}</strong><br/>
-          Route: ${bus.route}<br/>
-          Driver: ${bus.driver}<br/>
-          <button onclick="selectBus(${index})">Select</button>
-          <button onclick="editBus(${index})">Edit</button>
-          <button onclick="deleteBus(${index})">Delete</button>
-        `;
-        busList.appendChild(div);
-      });
-    }
-
-    function selectBus(index) {
-      selectedBusIndex = index;
-      alert(`Bus ${buses[index].number} selected`);
-      renderStops();
-    }
-
-    function editBus(index) {
-      const bus = buses[index];
-      document.getElementById('busNumber').value = bus.number;
-      document.getElementById('route').value = bus.route;
-      driverSelect.value = bus.driver;
-      deleteBus(index);
-    }
-
-    function deleteBus(index) {
-      // Remove polyline
-      if (polylines[index]) {
-        map.removeLayer(polylines[index]);
-        polylines[index] = null;
-      }
-      // Remove markers
-      if (busMarkers[index]) {
-        busMarkers[index].forEach(m => map.removeLayer(m));
-        delete busMarkers[index];
-      }
-      buses.splice(index, 1);
-      renderBuses();
-      renderStops();
-      drawRoutes();
-    }
-
-    function enableStopMode() {
-      if (selectedBusIndex === null) return alert('Select a bus first');
-      stopMode = true;
-      alert('Click on the map to add a stop');
-    }
-
-    map.on('click', (e) => {
-      if (!stopMode || selectedBusIndex === null) return;
-      const stopName = document.getElementById('stopName').value || `Stop ${buses[selectedBusIndex].stops.length + 1}`;
-      const stop = { name: stopName, latlng: e.latlng };
-      buses[selectedBusIndex].stops.push(stop);
-      document.getElementById('stopName').value = '';
-      renderStops();
-      drawRoutes();
-    });
-
-    function addStopByName() {
-      const name = document.getElementById("stopName").value;
-      if (!name || selectedBusIndex === null) return alert("Enter stop name and select a bus.");
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.length === 0) return alert("Location not found.");
-          const lat = parseFloat(data[0].lat);
-          const lon = parseFloat(data[0].lon);
-          const latlng = L.latLng(lat, lon);
-          buses[selectedBusIndex].stops.push({ name, latlng });
-          document.getElementById("stopName").value = "";
-          renderStops();
-          drawRoutes();
-        })
-        .catch(err => alert("Error fetching location."));
-    }
-
-    function renderStops() {
-      stopList.innerHTML = '';
-      if (selectedBusIndex === null) return;
-      buses[selectedBusIndex].stops.forEach((stop, idx) => {
-        const li = document.createElement('li');
-        li.innerHTML = `
-          ${stop.name}
-          <button onclick="editStop(${idx})">Edit</button>
-          <button onclick="deleteStop(${idx})">Delete</button>
-        `;
-        stopList.appendChild(li);
-      });
-    }
-
-    function editStop(index) {
-      const newName = prompt("Edit stop name:", buses[selectedBusIndex].stops[index].name);
-      if (newName) {
-        buses[selectedBusIndex].stops[index].name = newName;
-        renderStops();
-        drawRoutes();
-      }
-    }
-
-    function deleteStop(index) {
-      buses[selectedBusIndex].stops.splice(index, 1);
-      renderStops();
-      drawRoutes();
-    }
-
-    function clearStops() {
-      if (selectedBusIndex === null) return;
-      buses[selectedBusIndex].stops = [];
-      renderStops();
-      drawRoutes();
-    }
-
-    function removeAllLines() {
-      polylines.forEach(line => {
-        if (line) map.removeLayer(line);
-      });
-      polylines.length = 0;
-      // Clear all markers too
-      Object.values(busMarkers).forEach(markerArray => {
-        markerArray.forEach(m => map.removeLayer(m));
-      });
-      for (let key in busMarkers) delete busMarkers[key];
-    }
-
-    function drawRoutes() {
-      removeAllLines();
-      buses.forEach((bus, i) => {
-        if (bus.stops.length < 1) return;
-
-        // Add stop markers
-        busMarkers[i] = [];
-        bus.stops.forEach(stop => {
-          const marker = L.marker(stop.latlng).addTo(map).bindPopup(stop.name);
-          busMarkers[i].push(marker);
-        });
-
-        // Draw polyline if more than one stop
-        if (bus.stops.length > 1) {
-          const latlngs = bus.stops.map(s => s.latlng);
-          const color = colors[i % colors.length];
-          const polyline = L.polyline(latlngs, { color }).addTo(map);
-          polylines[i] = polyline;
-        }
-      });
-    }
+    };
   </script>
 </body>
 </html>

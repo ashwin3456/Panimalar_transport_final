@@ -1,49 +1,213 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Student/Faculty Dashboard</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body, html { height: 100%; margin: 0; }
-    #map { height: 100vh; width: 100vw; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Student & Faculty Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+  body{margin:0;font-family:Segoe UI,sans-serif;background:#0f172a;color:#f1f5f9;display:flex;flex-direction:column;height:100vh;}
+  header{background:#1e293b;padding:10px;display:flex;justify-content:space-between;align-items:center;color:#38bdf8;}
+  #search-bar{background:#1e293b;padding:10px;display:flex;gap:10px;flex-wrap:wrap;}
+  input,button{padding:8px;border-radius:5px;border:none;}
+  input{flex:1;background:#0f172a;color:white;border:1px solid #334155;}
+  button{background:#3b82f6;color:white;cursor:pointer;}
+  button:hover{background:#2563eb;}
+  #map{flex:1;}
+  #busModal{display:none;position:fixed;z-index:1000;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.8);}
+  #busModalContent{background:#1e293b;margin:10% auto;padding:20px;width:90%;max-width:400px;border-radius:10px;}
+  .bus-option{padding:10px;border-bottom:1px solid #334155;cursor:pointer;}
+  .bus-option:hover{background:#334155;}
+  .close-btn{float:right;cursor:pointer;}
+</style>
 </head>
 <body>
-  <div id="map"></div>
-  <script>
-    const map = L.map("map").setView([13.0827, 80.2707], 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+<header>
+  <span>Student & Faculty Dashboard</span>
+  <button onclick="window.location.href='login1.html'">Logout</button>
+</header>
 
-    const busMarkers = {};
+<div id="search-bar">
+  <input type="text" id="searchInput" placeholder="Search bus..." />
+  <button onclick="searchBus()">Search</button>
+  <button onclick="startVoice()">🎙</button>
+  <button onclick="openBusPopup()">🚌</button>
+</div>
 
-    function updateMarker(bus_id, lat, lng) {
-      if (busMarkers[bus_id]) {
-        busMarkers[bus_id].setLatLng([lat, lng]);
-      } else {
-        busMarkers[bus_id] = L.marker([lat, lng]).addTo(map)
-          .bindPopup("Bus ID: " + bus_id);
-      }
+<div id="map"></div>
+
+<!-- Modal -->
+<div id="busModal">
+  <div id="busModalContent">
+    <span class="close-btn" onclick="closeBusPopup()">&times;</span>
+    <h3>Select a Bus</h3>
+    <div id="busList"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const socket = io();
+let buses = [];
+let markers = {};
+let lastPositions = {};
+let trails = {};
+let selectedBusId = null;
+
+// Assign unique colors to each bus
+const busColors = {};
+const availableColors = ["red", "blue", "green", "purple", "orange", "yellow", "pink"];
+function getColorForBus(busId) {
+  if (!busColors[busId]) {
+    busColors[busId] = availableColors[Object.keys(busColors).length % availableColors.length];
+  }
+  return busColors[busId];
+}
+
+// Create bus marker icon with colored circle background
+function getBusPin(color) {
+  const svgIcon = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+      <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2"/>
+      <image href="img/bus.png" x="8" y="8" height="24" width="24"/>
+    </svg>
+  `;
+  return L.icon({
+    iconUrl: "data:image/svg+xml;base64," + btoa(svgIcon),
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -35]
+  });
+}
+
+let map = L.map('map').setView([13.0827,80.2707],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+socket.on("buses", data=>{
+  buses = data;
+  populateBusList();
+  data.forEach(bus=>{
+    if (bus.lat && bus.lng) {
+      updateMarker(bus.id, bus.lat, bus.lng, false);
     }
+  });
+});
 
-    // Load initial bus data
-    fetch("/get-buses")
-      .then(res => res.json())
-      .then(data => {
-        data.forEach(bus => {
-          if (bus.lat && bus.lng) {
-            updateMarker(bus.id, bus.lat, bus.lng);
-          }
-        });
-      });
+socket.on("locationUpdate", ({busId,lat,lng})=>{
+  updateMarker(busId, lat, lng, true);
+});
 
-    const socket = io();
-    socket.on("busLocationUpdate", data => {
-      const { bus_id, lat, lng } = data;
-      updateMarker(bus_id, lat, lng);
-    });
-  </script>
+function updateMarker(busId, lat, lng, animate) {
+  let bus = buses.find(b=>b.id===busId);
+  if (!bus) {
+    bus = { id: busId, name: "Unknown", driver: "Unknown", lat, lng };
+    buses.push(bus);
+    populateBusList();
+  }
+  bus.lat = lat;
+  bus.lng = lng;
+
+  let color = getColorForBus(busId);
+  let popupText = `<div style="border-left:6px solid ${color};padding-left:6px;">
+                     <b style="color:${color};">${busId}</b><br>
+                     ${bus.driver || "Driver"} is here
+                   </div>`;
+
+  if(!markers[busId]){
+    markers[busId] = L.marker([lat,lng], {icon: getBusPin(color)})
+      .addTo(map)
+      .bindPopup(popupText)
+      .openPopup();
+    lastPositions[busId] = [lat, lng];
+  } else {
+    markers[busId].bindPopup(popupText);
+    if (animate) {
+      animateMarker(busId, lastPositions[busId], [lat, lng], 1000);
+      lastPositions[busId] = [lat, lng];
+    } else {
+      markers[busId].setLatLng([lat, lng]);
+      lastPositions[busId] = [lat, lng];
+    }
+  }
+
+  if(!trails[busId]){
+    trails[busId] = L.polyline([[lat,lng]], {color: color, weight: 4}).addTo(map);
+  } else {
+    trails[busId].addLatLng([lat,lng]);
+  }
+
+  L.circleMarker([lat, lng], {
+    radius: 4,
+    color: color,
+    fillColor: color,
+    fillOpacity: 0.8
+  }).addTo(map);
+
+  if (selectedBusId === busId) {
+    map.setView([lat, lng], 15);
+  }
+}
+
+function animateMarker(busId, start, end, duration) {
+  let startTime = null;
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    let progress = Math.min((timestamp - startTime) / duration, 1);
+    let lat = start[0] + (end[0] - start[0]) * progress;
+    let lng = start[1] + (end[1] - start[1]) * progress;
+    markers[busId].setLatLng([lat, lng]);
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function searchBus(){
+  let q=document.getElementById('searchInput').value.toLowerCase();
+  let found = buses.find(b=>b.id.toLowerCase().includes(q) || b.name.toLowerCase().includes(q));
+  if(found){
+    selectedBusId = found.id;
+    if(found.lat && found.lng) {
+      map.setView([found.lat, found.lng], 15);
+    } else {
+      alert("Bus location not available yet.");
+    }
+  } else {
+    alert("No matching bus.");
+  }
+}
+
+let recognition;
+function startVoice(){
+  if(!('webkitSpeechRecognition' in window)) return alert("Voice not supported");
+  recognition=new webkitSpeechRecognition();
+  recognition.lang='en-IN';
+  recognition.onresult=function(e){
+    let transcript=e.results[0][0].transcript;
+    document.getElementById('searchInput').value=transcript;
+    searchBus();
+  }
+  recognition.start();
+}
+
+function populateBusList(){
+  const busList=document.getElementById('busList');
+  busList.innerHTML='';
+  buses.forEach(b=>{
+    let div=document.createElement('div');
+    div.className='bus-option';
+    div.textContent=`${b.id} - ${b.name}`;
+    div.onclick=()=>{
+      document.getElementById('searchInput').value=b.id;
+      closeBusPopup();
+      searchBus();
+    }
+    busList.appendChild(div);
+  });
+}
+
+function openBusPopup(){ document.getElementById('busModal').style.display='block'; }
+function closeBusPopup(){ document.getElementById('busModal').style.display='none'; }
+</script>
 </body>
 </html>

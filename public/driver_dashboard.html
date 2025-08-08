@@ -1,36 +1,101 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Driver Dashboard</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Driver Dashboard | Panimalar Bus Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    input, button { padding: 10px; margin-top: 10px; width: 100%; }
+    body { background: #0f172a; color: #f1f5f9; margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; }
+    header { background: #1e293b; padding: 1rem; text-align: center; color: #38bdf8; font-size: 1.5rem; }
+    #controls { background: #1e293b; padding: 1rem; display: flex; gap: 10px; flex-wrap: wrap; }
+    select, button { padding: 8px; border-radius: 5px; border: 1px solid #334155; background: #0f172a; color: #f1f5f9; }
+    button { background: #3b82f6; cursor: pointer; }
+    button:hover { background: #2563eb; }
+    #map { flex: 1; }
   </style>
 </head>
 <body>
-  <h2>Driver Dashboard</h2>
-  <input type="number" id="busId" placeholder="Enter your Bus ID" />
-  <button onclick="startTracking()">Start Sharing Location</button>
+  <header>Driver Dashboard</header>
 
+  <div id="controls">
+    <select id="busSelect"></select>
+    <button onclick="startTrip()">Start Trip</button>
+    <button onclick="stopTrip()">Stop Trip</button>
+    <span id="status">Not tracking</span>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const socket = io();
+    const socket = io("http://localhost:4000");
+    let buses = [];
+    let selectedBusId = null;
+    let watchId = null;
+    let driverMarker = null;
 
-    function startTracking() {
-      const bus_id = parseInt(document.getElementById("busId").value);
-      if (!bus_id) return alert("Enter valid Bus ID");
+    const map = L.map('map').setView([13.0827, 80.2707], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-      if ("geolocation" in navigator) {
-        setInterval(() => {
-          navigator.geolocation.getCurrentPosition(pos => {
-            const { latitude: lat, longitude: lng } = pos.coords;
-            socket.emit("locationUpdate", { bus_id, lat, lng });
-          });
-        }, 5000); // Update every 5 seconds
-      } else {
-        alert("Geolocation not supported");
+    socket.on("connect", () => {
+      console.log("Connected to server");
+    });
+
+    socket.on("buses", (data) => {
+      buses = data;
+      renderBusList();
+      if (selectedBusId && !buses.find(b => b.id === selectedBusId)) {
+        alert(`Bus ${selectedBusId} was removed by Admin`);
+        stopTrip();
       }
+    });
+
+    function renderBusList() {
+      const select = document.getElementById("busSelect");
+      select.innerHTML = "<option value=''>-- Select Bus --</option>";
+      buses.forEach(bus => {
+        const opt = document.createElement("option");
+        opt.value = bus.id;
+        opt.textContent = `${bus.id} - ${bus.name} (Driver: ${bus.driver || "N/A"})`;
+        select.appendChild(opt);
+      });
+      if (selectedBusId) select.value = selectedBusId;
+    }
+
+    function startTrip() {
+      selectedBusId = document.getElementById("busSelect").value;
+      if (!selectedBusId) return alert("Please select a bus");
+
+      if (!navigator.geolocation) return alert("Geolocation not supported by browser");
+
+      document.getElementById("status").textContent = `Tracking Bus: ${selectedBusId}`;
+      watchId = navigator.geolocation.watchPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        updateLocation(latitude, longitude);
+      }, err => {
+        console.error(err);
+        document.getElementById("status").textContent = "Error getting location";
+      }, { enableHighAccuracy: true });
+    }
+
+    function stopTrip() {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      selectedBusId = null;
+      driverMarker = null;
+      document.getElementById("status").textContent = "Tracking stopped";
+    }
+
+    function updateLocation(lat, lng) {
+      if (!selectedBusId) return;
+      socket.emit("shareLocation", { busId: selectedBusId, lat, lng });
+
+      if (!driverMarker) {
+        driverMarker = L.marker([lat, lng]).addTo(map).bindPopup("You are here").openPopup();
+      } else {
+        driverMarker.setLatLng([lat, lng]);
+      }
+      map.setView([lat, lng], map.getZoom());
     }
   </script>
 </body>

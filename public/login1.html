@@ -5,112 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Panimalar Bus Tracker - Auth</title>
   <style>
-    * { 
-      margin: 0; 
-      padding: 0; 
-      box-sizing: border-box; 
-    }
+    * {margin: 0; padding: 0; box-sizing: border-box;}
     body {
       font-family: 'Segoe UI', sans-serif;
-      background-color: #0f172a; /* Dark background */
-      color: #f8fafc; /* Light text */
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      background-color: #0f172a;
+      color: #f8fafc;
+      display: flex; justify-content: center; align-items: center;
       height: 100vh;
     }
-
-    /* Common container style */
     .container {
-      background: #1e293b; /* Darker card background */
+      background: #1e293b;
       padding: 30px;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
+      width: 90%; max-width: 400px; text-align: center;
       animation: fadeIn 0.4s ease-in-out;
     }
-
-    h2 {
-      margin-bottom: 15px;
-      font-size: 26px;
-      color: #38bdf8; /* Accent blue */
-    }
-
-    .role-label {
-      font-size: 14px;
-      color: #94a3b8;
-      margin-bottom: 20px;
-    }
-
+    h2 {margin-bottom: 15px; font-size: 26px; color: #38bdf8;}
+    .role-label {font-size: 14px; color: #94a3b8; margin-bottom: 20px;}
     button, input {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border-radius: 6px;
-      font-size: 15px;
+      width: 100%; padding: 12px; margin: 10px 0;
+      border-radius: 6px; font-size: 15px;
       transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
     }
-
-    /* Main buttons */
     button {
-      background: #3b82f6;
-      color: #fff;
-      border: none;
-      cursor: pointer;
+      background: #3b82f6; color: #fff; border: none; cursor: pointer;
     }
-    button:hover { 
-      background: #2563eb; 
-      transform: scale(1.02);
-    }
-
-    /* Inputs */
+    button:hover {background: #2563eb; transform: scale(1.02);}
     input {
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #f1f5f9;
+      background: #0f172a; border: 1px solid #334155; color: #f1f5f9;
     }
-    input::placeholder { 
-      color: #64748b; 
-    }
-
-    /* Toggle links */
-    .toggle {
-      margin-top: 15px;
-      font-size: 14px;
-      color: #94a3b8;
-    }
-    .toggle a {
-      color: #38bdf8;
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .toggle a:hover { 
-      text-decoration: underline; 
-    }
-
-    /* Role buttons with glow */
+    input::placeholder {color: #64748b;}
+    .toggle {margin-top: 15px; font-size: 14px; color: #94a3b8;}
+    .toggle a {color: #38bdf8; cursor: pointer; text-decoration: none;}
+    .toggle a:hover {text-decoration: underline;}
     .role-buttons button {
-      margin: 6px 0;
-      background: #1d4ed8;
+      margin: 6px 0; background: #1d4ed8;
       box-shadow: 0 0 0 rgba(59, 130, 246, 0);
     }
-    .role-buttons button:hover { 
-      background: #2563eb; 
-      box-shadow: 0 0 12px rgba(59, 130, 246, 0.7); /* Glow effect */
+    .role-buttons button:hover {
+      background: #2563eb;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.7);
       transform: scale(1.05);
     }
-
-    /* Hidden */
-    .hidden { 
-      display: none; 
-    }
-
-    /* Animation */
+    .hidden {display: none;}
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from {opacity: 0; transform: translateY(10px);}
+      to {opacity: 1; transform: translateY(0);}
     }
   </style>
 </head>
@@ -154,64 +95,71 @@
 </div>
 
 <script>
-  let selectedRole = "Student";
-  const loginForm = document.getElementById("login-form");
-  const signupForm = document.getElementById("signup-form");
-  const toggleText = document.getElementById("toggle-text");
-  const toggleLink = document.getElementById("toggle-link");
-  const formTitle = document.getElementById("form-title");
-  const roleLabel = document.getElementById("role-name");
+let selectedRole = "Student";
+const loginForm = document.getElementById("login-form");
+const signupForm = document.getElementById("signup-form");
+const toggleText = document.getElementById("toggle-text");
+const toggleLink = document.getElementById("toggle-link");
+const formTitle = document.getElementById("form-title");
+const roleLabel = document.getElementById("role-name");
 
-  function selectRole(role) {
-    selectedRole = role;
-    document.getElementById("role-selection").classList.add("hidden");
-    document.getElementById("auth-container").classList.remove("hidden");
-    roleLabel.textContent = role;
+// On page load, check if already logged in
+window.onload = function() {
+  const savedRole = localStorage.getItem("role");
+  const loggedIn = localStorage.getItem("loggedIn");
+  if (loggedIn === "true" && savedRole) {
+    redirectToDashboard(savedRole);
   }
+};
 
-  function goBack() {
-    document.getElementById("auth-container").classList.add("hidden");
-    document.getElementById("role-selection").classList.remove("hidden");
-    loginForm.classList.remove("hidden");
-    signupForm.classList.add("hidden");
-    formTitle.textContent = "Login";
-    toggleText.textContent = "Don't have an account?";
-    toggleLink.textContent = "Sign up";
-  }
+function selectRole(role) {
+  selectedRole = role;
+  document.getElementById("role-selection").classList.add("hidden");
+  document.getElementById("auth-container").classList.remove("hidden");
+  roleLabel.textContent = role;
+}
 
-  function toggleForm() {
-    const isLogin = !loginForm.classList.contains("hidden");
-    loginForm.classList.toggle("hidden");
-    signupForm.classList.toggle("hidden");
-    formTitle.textContent = isLogin ? "Sign Up" : "Login";
-    toggleText.textContent = isLogin ? "Already have an account?" : "Don't have an account?";
-    toggleLink.textContent = isLogin ? "Login" : "Sign up";
-  }
+function goBack() {
+  document.getElementById("auth-container").classList.add("hidden");
+  document.getElementById("role-selection").classList.remove("hidden");
+  loginForm.classList.remove("hidden");
+  signupForm.classList.add("hidden");
+  formTitle.textContent = "Login";
+  toggleText.textContent = "Don't have an account?";
+  toggleLink.textContent = "Sign up";
+}
 
-  function handleLogin(event) {
-    event.preventDefault();
-    alert("Logged in as " + selectedRole + "!");
-    switch (selectedRole) {
-      case "Admin":
-        window.location.href = "admin_dashboard.html";
-        break;
-      case "Driver":
-        window.location.href = "driver_dashboard.html";
-        break;
-      case "Faculty":
-        window.location.href = "faculty_dashboard.html";
-        break;
-      case "Student":
-        window.location.href = "student_dashboard.html";
-        break;
-    }
-  }
+function toggleForm() {
+  const isLogin = !loginForm.classList.contains("hidden");
+  loginForm.classList.toggle("hidden");
+  signupForm.classList.toggle("hidden");
+  formTitle.textContent = isLogin ? "Sign Up" : "Login";
+  toggleText.textContent = isLogin ? "Already have an account?" : "Don't have an account?";
+  toggleLink.textContent = isLogin ? "Login" : "Sign up";
+}
 
-  function handleSignup(event) {
-    event.preventDefault();
-    alert("Account created! You can now log in.");
-    toggleForm();
+function handleLogin(event) {
+  event.preventDefault();
+  // Here you should check credentials with server - for demo just store
+  localStorage.setItem("role", selectedRole);
+  localStorage.setItem("loggedIn", "true");
+  redirectToDashboard(selectedRole);
+}
+
+function handleSignup(event) {
+  event.preventDefault();
+  alert("Account created! You can now log in.");
+  toggleForm();
+}
+
+function redirectToDashboard(role) {
+  switch (role) {
+    case "Admin":   window.location.href = "admin_dashboard.html"; break;
+    case "Driver":  window.location.href = "driver_dashboard.html"; break;
+    case "Faculty": window.location.href = "faculty_dashboard.html"; break;
+    case "Student": window.location.href = "student_dashboard.html"; break;
   }
+}
 </script>
 
 </body>
