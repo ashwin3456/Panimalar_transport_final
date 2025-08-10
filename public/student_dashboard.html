@@ -111,7 +111,7 @@ function updateMarker(busId, lat, lng, animate) {
   let color = getColorForBus(busId);
   let popupText = `<div style="border-left:6px solid ${color};padding-left:6px;">
                      <b style="color:${color};">${busId}</b><br>
-                     ${bus.driver || "Driver"} is here
+                     ${bus.driver} is here
                    </div>`;
 
   if(!markers[busId]){
