@@ -78,6 +78,7 @@ socket.on("location_update", ({ busId, lat, lng }) => {
 
 // Logout
 function logout() {
+  localStorage.clear();//clear login state
   window.location.href = "login1.html";
 }
 

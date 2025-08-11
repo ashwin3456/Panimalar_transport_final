@@ -1,0 +1,14 @@
+[
+  {
+    "name": "annamalai",
+    "email": "1@ecw.com",
+    "password": "anna",
+    "role": "Admin"
+  },
+  {
+    "name": "Aswin V",
+    "email": "aswinrajv2006@gmail.com",
+    "password": "aswin",
+    "role": "Student"
+  }
+]

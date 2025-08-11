@@ -104,6 +104,7 @@
 
     function logout() {
       stopTrip();
+      localStorage.clear(); // Clear login state
       window.location.href = 'login1.html';
     }
 

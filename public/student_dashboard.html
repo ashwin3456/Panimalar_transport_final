@@ -25,7 +25,7 @@
 <body>
 <header>
   <span>Student & Faculty Dashboard</span>
-  <button onclick="window.location.href='login1.html'">Logout</button>
+  <button onclick="logout()">Logout</button>
 </header>
 
 <div id="search-bar">
@@ -54,6 +54,11 @@ let markers = {};
 let lastPositions = {};
 let trails = {};
 let selectedBusId = null;
+
+function logout() {
+      localStorage.clear(); // Clear login state
+      window.location.href = 'login1.html';
+    }
 
 // Assign unique colors to each bus
 const busColors = {};
