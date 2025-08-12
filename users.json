@@ -10,5 +10,17 @@
     "email": "aswinrajv2006@gmail.com",
     "password": "aswin",
     "role": "Student"
+  },
+  {
+    "name": "annamalai",
+    "email": "1@ecw.com",
+    "password": "anna",
+    "role": "Driver"
+  },
+  {
+    "name": "anna",
+    "email": "a@v.com",
+    "password": "anna",
+    "role": "Student"
   }
 ]

@@ -3,7 +3,9 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 const fs = require("fs");
-const ngrok = require("ngrok"); // Public tunnel
+const ngrok = require("ngrok");
+const qr = require("qrcode-terminal"); // QR Code package
+require("dotenv").config();
 
 // ====== FILE PATHS ======
 const DATA_FILE = path.join(__dirname, "data.json");
@@ -16,12 +18,13 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, "public")));
+
 app.use(express.json());
 
 // ====== STATE ======
-let buses = [];   // { id, name, driver, lat, lng }
-let drivers = []; // ["Driver1", "Driver2", ...]
-let users = [];   // { name, email, password, role }
+let buses = [];
+let drivers = [];
+let users = [];
 
 // ====== LOAD DATA ======
 function loadData() {
@@ -32,8 +35,6 @@ function loadData() {
       buses = Array.isArray(parsed.buses) ? parsed.buses : [];
       drivers = Array.isArray(parsed.drivers) ? parsed.drivers : [];
       console.log("✅ Loaded buses & drivers from", DATA_FILE);
-    } else {
-      console.log("ℹ No bus/driver data file found, starting fresh.");
     }
 
     if (fs.existsSync(USERS_FILE)) {
@@ -41,8 +42,6 @@ function loadData() {
       const parsedUsers = JSON.parse(rawUsers);
       users = Array.isArray(parsedUsers) ? parsedUsers : [];
       console.log("✅ Loaded users from", USERS_FILE);
-    } else {
-      console.log("ℹ No user data file found, starting fresh.");
     }
   } catch (err) {
     console.error("❌ Error loading files:", err);
@@ -68,15 +67,10 @@ function saveUsers() {
   });
 }
 
-// ====== HELPERS ======
-function findBus(id) {
-  return buses.find(b => b.id === id);
-}
-
 // ====== API ======
 app.get("/trip/:busId", (req, res) => {
   const { busId } = req.params;
-  const bus = findBus(busId);
+  const bus = buses.find(b => b.id === busId);
   if (bus && bus.lat != null && bus.lng != null) {
     res.json({ busId: bus.id, lat: bus.lat, lng: bus.lng });
   } else {
@@ -151,7 +145,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("editBus", ({ id, name, driver }) => {
-    const b = findBus(id);
+    const b = buses.find(b => b.id === id);
     if (b) {
       b.name = name;
       b.driver = driver;
@@ -171,7 +165,7 @@ io.on("connection", (socket) => {
 
   socket.on("shareLocation", ({ busId, lat, lng }) => {
     if (!busId) return;
-    const b = findBus(busId);
+    const b = buses.find(b => b.id === busId);
     if (b) {
       b.lat = lat;
       b.lng = lng;
@@ -184,7 +178,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stopTrip", (busId) => {
-    const b = findBus(busId);
+    const b = buses.find(b => b.id === busId);
     if (b) {
       b.lat = null;
       b.lng = null;
@@ -201,15 +195,17 @@ io.on("connection", (socket) => {
 
 // ====== START SERVER ======
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, async () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+server.listen(PORT, "0.0.0.0", async () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 
   try {
     const url = await ngrok.connect({
       addr: PORT,
-      authtoken: "317elTyKt3ylxlro85HfF0cxteb_2zWhGnKzHxtmwnKitDK2V"
+      authtoken: process.env.NGROK_AUTHTOKEN,
+      subdomain: process.env.NGROK_SUBDOMAIN
     });
-    console.log(`🌍 Public URL (share with mobile): ${url}\n`);
+    console.log(`🌍 Public URL: ${url}`);
+    qr.generate(url, { small: true }); // Display QR code
   } catch (err) {
     console.error("❌ Ngrok failed to start:", err);
   }

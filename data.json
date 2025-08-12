@@ -4,12 +4,12 @@
       "id": "78",
       "name": "arakkonam",
       "driver": "anna",
-      "lat": 13.051634,
-      "lng": 80.074511
+      "lat": null,
+      "lng": null
     }
   ],
   "drivers": [
     "anna"
   ],
-  "savedAt": "2025-08-11T02:08:46.420Z"
+  "savedAt": "2025-08-12T07:30:41.094Z"
 }
