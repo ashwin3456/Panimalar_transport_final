@@ -22,5 +22,62 @@
     "email": "a@v.com",
     "password": "anna",
     "role": "Student"
+  },
+  {
+    "name": "aswinrajan",
+    "email": "aswinrajan@gmail.com",
+    "password": "3341",
+    "role": "Admin"
+  },
+  {
+    "name": "ranjith",
+    "email": "ranjith@gmail.com",
+    "password": "1",
+    "role": "Driver"
+  },
+  {
+    "name": "Raju",
+    "email": "aravindrajan05@gmail.com",
+    "password": "arasv@123",
+    "role": "Student"
+  },
+  {
+    "name": "aswinraj",
+    "email": "aswinraj@gmail.com",
+    "password": "1",
+    "role": "Admin"
+  },
+  {
+    "id": "1756387877690",
+    "name": "boopathy",
+    "email": "boopathy@gmail.com",
+    "password": "$2b$10$hOuUng08Dvw9lpaE6gPj9OhKgepyKCeN53/Qjzq7RxWWgdSG4UeXW",
+    "role": "Student",
+    "roll_number": "2024pecai546",
+    "phone_number": null,
+    "admin_number": null,
+    "faculty_id": null
+  },
+  {
+    "id": "1756389040947",
+    "name": "aswin",
+    "email": "aswin@gmail.com",
+    "password": "$2b$10$Y7bpZS6bfX5rxvFSJWJokuMQAvTyod/0nEq.XV4USl0nAfhNdsVEy",
+    "role": "Driver",
+    "roll_number": null,
+    "phone_number": "95657483838",
+    "admin_number": null,
+    "faculty_id": null
+  },
+  {
+    "id": "1756390673191",
+    "name": "ash",
+    "email": "ash@gmail.com",
+    "password": "$2b$10$YRaBslnQHrAb5oRBuPuPBu2qiGCTL23d8B8Dw0hco5eJKpVoO/Cgi",
+    "role": "Admin",
+    "roll_number": null,
+    "phone_number": null,
+    "admin_number": "adm1",
+    "faculty_id": null
   }
 ]

@@ -1,191 +1,286 @@
+// server.js — Unified backend for Admin / Driver / Faculty / Student dashboards
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 const fs = require("fs");
 const ngrok = require("ngrok");
-const qr = require("qrcode-terminal"); // QR Code package
-require("dotenv").config();
+const qr = require("qrcode-terminal");
+const multer = require("multer");
+const Database = require("better-sqlite3");
 
-// ====== FILE PATHS ======
-const DATA_FILE = path.join(__dirname, "data.json");
-const USERS_FILE = path.join(__dirname, "users.json");
-const SAVE_DEBOUNCE_MS = 1000;
+// ---------- Config ----------
+const NGROK_AUTHTOKEN = "31EOHnY47ELp1FI1pkxT13H9Y5H_5njZSGX5AK79Ki8LnMnye"; // replace
+const PORT = 4000;
 
-// ====== EXPRESS + SOCKET.IO SETUP ======
+// ---------- Directories ----------
+const STORAGE_DIR = path.join(__dirname, "storage");
+if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
+const UPLOADS_DIR = path.join(__dirname, "public", "uploads");
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const DATA_FILE = path.join(STORAGE_DIR, "buses.json"); // main storage
+const USERS_FILE = path.join(STORAGE_DIR, "users.json");
+const DB_FILE = path.join(STORAGE_DIR, "data.db");
+
+// ---------- Multer Upload ----------
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || ".jpg";
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
+  },
+});
+const upload = multer({ storage });
+
+// ---------- Express + Socket.IO ----------
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, "public")));
-
-app.use(express.json());
-
-// ====== STATE ======
+// ---------- In-memory state ----------
 let buses = [];
 let drivers = [];
+let stops = [];
+let routeOrder = [];
 let users = [];
 
-// ====== LOAD DATA ======
+// ---------- SQLite ----------
+let db;
+try {
+  db = new Database(DB_FILE);
+  db.prepare(
+    "CREATE TABLE IF NOT EXISTS snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT, savedAt TEXT)"
+  ).run();
+  console.log("✅ SQLite ready:", DB_FILE);
+} catch (e) {
+  console.warn("⚠ SQLite init failed:", e.message);
+  db = null;
+}
+
+// ---------- Load Data ----------
 function loadData() {
   try {
     if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, "utf8");
-      const parsed = JSON.parse(raw);
-      buses = Array.isArray(parsed.buses) ? parsed.buses : [];
-      drivers = Array.isArray(parsed.drivers) ? parsed.drivers : [];
-      console.log("✅ Loaded buses & drivers from", DATA_FILE);
+      const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+      buses = parsed.buses || [];
+      drivers = parsed.drivers || [];
+      stops = parsed.stops || [];
+      routeOrder = parsed.routeOrder || [];
     }
-
     if (fs.existsSync(USERS_FILE)) {
-      const rawUsers = fs.readFileSync(USERS_FILE, "utf8");
-      const parsedUsers = JSON.parse(rawUsers);
-      users = Array.isArray(parsedUsers) ? parsedUsers : [];
-      console.log("✅ Loaded users from", USERS_FILE);
+      users = JSON.parse(fs.readFileSync(USERS_FILE, "utf8")) || [];
     }
   } catch (err) {
-    console.error("❌ Error loading files:", err);
+    console.error("❌ Load error:", err);
   }
 }
 loadData();
 
-// ====== SAVE FUNCTIONS ======
+// ---------- Save Functions ----------
+const SAVE_DEBOUNCE_MS = 800;
 let saveTimeout = null;
 function scheduleSave() {
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
-    const payload = { buses, drivers, savedAt: new Date().toISOString() };
-    fs.writeFile(DATA_FILE, JSON.stringify(payload, null, 2), (err) => {
-      if (err) console.error("❌ Failed to save bus/driver data:", err);
-    });
+    const payload = { buses, drivers, stops, routeOrder, savedAt: new Date().toISOString() };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2));
+    if (db) {
+      db.prepare("INSERT INTO snapshots (payload, savedAt) VALUES (?, ?)").run(
+        JSON.stringify(payload),
+        new Date().toISOString()
+      );
+    }
+    console.log("💾 State saved");
   }, SAVE_DEBOUNCE_MS);
 }
-
 function saveUsers() {
-  fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), (err) => {
-    if (err) console.error("❌ Failed to save users:", err);
-  });
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  console.log("💾 Users saved");
 }
 
-// ====== API ======
-app.get("/trip/:busId", (req, res) => {
-  const { busId } = req.params;
-  const bus = buses.find(b => b.id === busId);
-  if (bus && bus.lat != null && bus.lng != null) {
-    res.json({ busId: bus.id, lat: bus.lat, lng: bus.lng });
-  } else {
-    res.json(null);
+// ---------- Helpers ----------
+const uid = (p = "id") => p + "_" + Math.random().toString(36).slice(2, 9);
+function getDashboardForRole(role) {
+  switch ((role || "").toLowerCase()) {
+    case "admin": return "/admin_dashboard.html";
+    case "driver": return "/driver_dashboard.html";
+    case "faculty": return "/faculty_dashboard.html";
+    case "student": return "/student_dashboard.html";
+    default: return "/";
   }
+}
+
+// ---------- Middlewares ----------
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(UPLOADS_DIR));
+app.use(express.static(path.join(__dirname, "public")));
+
+// ---------- API Endpoints ----------
+// System data
+app.get("/api/data", (req, res) => {
+  res.json({ buses, drivers, stops, routeOrder });
+});
+app.post("/api/data", (req, res) => {
+  const { buses: b, drivers: d, stops: s, routeOrder: r } = req.body;
+  if (Array.isArray(b)) buses = b;
+  if (Array.isArray(d)) drivers = d;
+  if (Array.isArray(s)) stops = s;
+  if (Array.isArray(r)) routeOrder = r;
+  scheduleSave();
+  io.emit("buses", buses);
+  io.emit("drivers", drivers);
+  io.emit("stops", stops);
+  res.json({ status: "ok" });
 });
 
-app.get("/debug-users", (req, res) => {
-  res.json(users);
+// Profiles
+app.get("/profile/:id", (req, res) => {
+  const u = users.find((x) => String(x.id) === req.params.id);
+  if (!u) return res.status(404).json({ error: "Not found" });
+  res.json(u);
 });
-
-// ====== AUTH ======
-app.post("/signup", (req, res) => {
-  const { name, email, password, role } = req.body;
-  if (!name || !email || !password || !role) {
-    return res.status(400).json({ message: "Missing fields" });
+app.post("/profile/:id", upload.single("photo"), (req, res) => {
+  const id = req.params.id;
+  let u = users.find((x) => String(x.id) === id);
+  if (!u) {
+    u = { id, role: req.body.role || "student", email: req.body.email || "" };
+    users.push(u);
   }
-  const exists = users.find(u => u.email === email && u.role === role);
-  if (exists) return res.status(409).json({ message: "User already exists" });
-
-  users.push({ name, email, password, role });
+  Object.assign(u, req.body);
+  if (req.file) u.profile_photo = "uploads/" + path.basename(req.file.path);
   saveUsers();
-  console.log("🆕 New user signed up:", email, role);
-  res.status(201).json({ message: "User created" });
+  io.emit("profileUpdated", u);
+  res.json({ success: true, user: u });
 });
 
+// Auth
+app.post("/signup", (req, res) => {
+  const { role, email, password, name } = req.body;
+  if (!role || !email || !password)
+    return res.status(400).json({ message: "Missing fields" });
+  if (users.find((u) => u.email === email && u.role === role))
+    return res.status(409).json({ message: "User exists" });
+
+  const newUser = { id: uid("user"), role, email, password, name, createdAt: new Date().toISOString() };
+  users.push(newUser);
+  saveUsers();
+  res.status(201).json({ message: "User created", redirect: getDashboardForRole(role), user: newUser });
+});
 app.post("/login", (req, res) => {
   const { email, password, role } = req.body;
-  if (!email || !password || !role) {
-    return res.status(400).json({ message: "Missing fields" });
-  }
-  const user = users.find(u => u.email === email && u.role === role);
-  if (!user || user.password !== password) {
+  const user = users.find((u) => u.email === email && u.role === role);
+  if (!user || user.password !== password)
     return res.status(401).json({ message: "Invalid credentials" });
-  }
-  res.json({ token: "fake-jwt-token" });
+  res.json({ success: true, token: "fake-jwt", redirect: getDashboardForRole(role), user });
 });
 
-// ====== SOCKET.IO ======
+// ---------- Socket.IO ----------
 io.on("connection", (socket) => {
   console.log("📡 Client connected:", socket.id);
 
   socket.emit("buses", buses);
   socket.emit("drivers", drivers);
+  socket.emit("stops", stops);
+  socket.emit("users", users);
 
-  socket.on("addDriver", (name) => {
-    if (!name) return;
-    if (!drivers.some(d => d.toLowerCase() === name.toLowerCase())) {
-      drivers.push(name);
+  // Admin
+  socket.on("addDriver", ({ id, name }) => {
+    if (name && !drivers.some((d) => d.name.toLowerCase() === name.toLowerCase())) {
+      const newDriver = { id: id || uid("drv"), name };
+      drivers.push(newDriver);
       io.emit("drivers", drivers);
       scheduleSave();
-      console.log("➕ Driver added:", name);
     }
   });
-
-  socket.on("deleteDriver", (name) => {
-    if (!name) return;
-    drivers = drivers.filter(d => d !== name);
+  socket.on("deleteDriver", (driverId) => {
+    drivers = drivers.filter((d) => d.id !== driverId);
+    buses.forEach((b) => (b.driverIds = b.driverIds.filter((dr) => dr !== driverId)));
     io.emit("drivers", drivers);
+    io.emit("buses", buses);
     scheduleSave();
-    console.log("🗑 Driver deleted:", name);
   });
-
   socket.on("addBus", (bus) => {
-    if (!bus || !bus.id) return;
-    if (!buses.some(b => b.id.toLowerCase() === bus.id.toLowerCase())) {
-      buses.push({ ...bus, lat: null, lng: null });
+    if (bus && bus.id && !buses.some((b) => b.id === bus.id)) {
+      buses.push({ ...bus, driverIds: bus.driverIds || [], stops: bus.stops || [] });
       io.emit("buses", buses);
       scheduleSave();
-      console.log("🚌 Bus added:", bus.id);
     }
   });
-
-  socket.on("editBus", ({ id, name, driver }) => {
-    const b = buses.find(b => b.id === id);
-    if (b) {
-      b.name = name;
-      b.driver = driver;
+  socket.on("editBus", (bus) => {
+    const i = buses.findIndex((b) => b.id === bus.id);
+    if (i !== -1) {
+      buses[i] = { ...buses[i], ...bus };
       io.emit("buses", buses);
       scheduleSave();
-      console.log("✏ Bus edited:", id);
     }
   });
-
   socket.on("deleteBus", (id) => {
-    if (!id) return;
-    buses = buses.filter(b => b.id !== id);
+    buses = buses.filter((b) => b.id !== id);
     io.emit("buses", buses);
     scheduleSave();
-    console.log("🗑 Bus deleted:", id);
+  });
+  socket.on("assignDriversToBus", ({ busId, driverIds }) => {
+    const bus = buses.find((b) => b.id === busId);
+    if (bus) {
+      bus.driverIds = driverIds || [];
+      io.emit("buses", buses);
+      scheduleSave();
+    }
   });
 
+  // Stops
+  socket.on("addStop", (stop) => {
+    if (stop && stop.name && !stops.some((s) => s.name.toLowerCase() === stop.name.toLowerCase())) {
+      const newStop = { id: stop.id || uid("stp"), ...stop };
+      stops.push(newStop);
+      io.emit("stops", stops);
+      scheduleSave();
+    }
+  });
+  socket.on("deleteStop", (stopId) => {
+    stops = stops.filter((s) => s.id !== stopId);
+    io.emit("stops", stops);
+    scheduleSave();
+  });
+
+  // Route order
+  socket.on("updateRouteOrder", (order) => {
+    if (Array.isArray(order)) {
+      routeOrder = order;
+      io.emit("routeOrder", routeOrder);
+      scheduleSave();
+    }
+  });
+
+  // Driver
   socket.on("shareLocation", ({ busId, lat, lng }) => {
-    if (!busId) return;
-    const b = buses.find(b => b.id === busId);
+    let b = buses.find((x) => x.id === busId);
     if (b) {
-      b.lat = lat;
-      b.lng = lng;
+      b.lat = lat; b.lng = lng;
     } else {
-      buses.push({ id: busId, name: busId, driver: "Unknown", lat, lng });
+      buses.push({ id: busId, name: busId, lat, lng, driverIds: [], stops: [] });
     }
-    io.emit("locationUpdate", { busId, lat, lng });
+    io.emit("locationUpdate", { busId, lat, lng, timestamp: Date.now() });
     io.emit("buses", buses);
     scheduleSave();
   });
-
   socket.on("stopTrip", (busId) => {
-    const b = buses.find(b => b.id === busId);
-    if (b) {
-      b.lat = null;
-      b.lng = null;
-    }
+    const b = buses.find((x) => x.id === busId);
+    if (b) { b.lat = null; b.lng = null; }
     io.emit("buses", buses);
+    io.emit("driverStopped", { busId });
     scheduleSave();
-    console.log(`🛑 Trip stopped for bus ${busId}`);
+  });
+
+  // Profiles
+  socket.on("updateProfile", (u) => {
+    const idx = users.findIndex((x) => String(x.id) === String(u.id));
+    if (idx === -1) users.push(u);
+    else users[idx] = { ...users[idx], ...u };
+    saveUsers();
+    io.emit("profileUpdated", u);
   });
 
   socket.on("disconnect", () => {
@@ -193,20 +288,16 @@ io.on("connection", (socket) => {
   });
 });
 
-// ====== START SERVER ======
-const PORT = process.env.PORT || 4000;
+// ---------- Start ----------
 server.listen(PORT, "0.0.0.0", async () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-
-  try {
-    const url = await ngrok.connect({
-      addr: PORT,
-      authtoken: process.env.NGROK_AUTHTOKEN,
-      subdomain: process.env.NGROK_SUBDOMAIN
-    });
-    console.log(`🌍 Public URL: ${url}`);
-    qr.generate(url, { small: true }); // Display QR code
-  } catch (err) {
-    console.error("❌ Ngrok failed to start:", err);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  if (NGROK_AUTHTOKEN) {
+    try {
+      const url = await ngrok.connect({ addr: PORT, authtoken: NGROK_AUTHTOKEN });
+      console.log(`🌍 Public URL: ${url}`);
+      qr.generate(url, { small: true });
+    } catch (err) {
+      console.error("❌ Ngrok failed:", err.message);
+    }
   }
 });

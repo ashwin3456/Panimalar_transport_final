@@ -1,239 +1,307 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
+  <title>Faculty Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Student & Faculty Dashboard | Panimalar Bus Tracker</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #0f172a;
-      color: #f1f5f9;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+    :root{
+      --bg:#0b1020;--panel:#0f172a;--brand:#3b82f6;--ok:#22c55e;--danger:#ef4444;--muted:#94a3b8;
     }
-    header {
-      background-color: #1e293b;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-      color: #38bdf8;
-    }
-    #search-bar {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      padding: 10px;
-      background-color: #1e293b;
-      flex-wrap: wrap;
-    }
-    input[type="text"] {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #334155;
-      background-color: #0f172a;
-      color: #f8fafc;
-      border-radius: 5px;
-    }
-    button {
-      padding: 10px;
-      background-color: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover { background-color: #2563eb; }
-    #map { flex: 1; }
-    #message-box {
-      padding: 10px;
-      background-color: #1e293b;
-      display: flex;
-      gap: 10px;
-    }
-    #message {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #334155;
-      background-color: #0f172a;
-      color: white;
-      border-radius: 5px;
-    }
-    /* Modal Popup */
-    #busModal {
-      display: none;
-      position: fixed;
-      z-index: 999;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
-      overflow: auto;
-      background-color: rgba(15, 23, 42, 0.8);
-    }
-    #busModalContent {
-      background-color: #1e293b;
-      margin: 10% auto;
-      padding: 20px;
-      border: 1px solid #334155;
-      width: 90%; max-width: 400px;
-      border-radius: 10px;
-      color: white;
-    }
-    .bus-option {
-      padding: 10px;
-      border-bottom: 1px solid #334155;
-      cursor: pointer;
-    }
-    .bus-option:hover { background-color: #334155; }
-    .close-btn {
-      float: right;
-      font-size: 20px;
-      cursor: pointer;
-    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(160deg,#0b1020,#0a1025 60%,#0b1020);color:#e5e7eb;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;height:100vh;display:grid;grid-template-columns:340px 1fr}
+    #sidebar{background:rgba(15,23,42,.9);backdrop-filter:blur(8px);border-right:1px solid #1f2a44;padding:18px 16px;display:flex;flex-direction:column;gap:14px}
+    #map{height:100vh;width:100%}
+    h2{margin:8px 0 0;font-size:18px}
+    select, button{width:100%;padding:12px;border-radius:12px;border:1px solid #1f2a44;background:#0b1328;color:#fff}
+    button{cursor:pointer;font-weight:700;border:none}
+    .btn-primary{background:linear-gradient(90deg,#3b82f6,#2563eb)}
+    .btn-warn{background:#f59e0b;color:#000}
+    .btn-danger{background:#ef4444}
+    .chip{display:flex;align-items:center;gap:10px;padding:8px;border-radius:14px;background:#0a1222;border:1px solid #1f2a44;cursor:pointer}
+    .chip img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid #1f2a44}
+    .muted{color:var(--muted);font-size:12px}
+    .section{padding:10px;border-radius:14px;background:#0a1222;border:1px solid #1f2a44}
+    .footer{margin-top:auto;display:grid;gap:8px}
+    .drawer{position:fixed;inset:0;background:rgba(2,6,23,.6);display:none}
+    .panel{position:absolute;left:16px;top:16px;bottom:16px;width:360px;background:#0b1220;border:1px solid #1f2a44;border-radius:16px;padding:16px;overflow:auto}
+    .row{display:grid;gap:10px}
+    label{font-size:12px;color:#cbd5e1}
+    input[type="text"], input[type="tel"], input[type="email"]{width:100%;padding:10px;border-radius:10px;border:1px solid #1f2a44;background:#0a1222;color:#fff}
+    .stop-list{max-height:140px;overflow:auto;border:1px solid #1f2a44;border-radius:10px;padding:6px;background:#0a1222}
+    .stop-list div{padding:4px 6px;border-bottom:1px dashed #17223a}
   </style>
 </head>
 <body>
+  <div id="sidebar">
+    <!-- Profile chip -->
+    <div id="profileChip" class="chip" title="Open profile">
+      <img id="chipImg" src="https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1" alt="">
+      <div>
+        <div id="chipName">Student</div>
+        <div class="muted" id="chipEmail">-</div>
+      </div>
+    </div>
 
-<header>Panimalar Bus Tracker - Student/Faculty Dashboard</header>
+    <div class="section">
+      <h2>Student Bus Tracker</h2>
+      <select id="busSelect"></select>
+      <div id="busDetails" class="muted" style="margin-top:6px;display:none">
+        <div><b>Bus:</b> <span id="detailBusNumber"></span></div>
+        <div><b>Driver:</b> <span id="detailDriverName"></span> (<span id="detailDriverPhone"></span>)</div>
+        <div><b>Route:</b> <span id="detailRouteName"></span></div>
+      </div>
+      <div id="stopListContainer" class="stop-list" style="display:none;margin-top:8px">
+        <div id="stopList"></div>
+      </div>
+      <button id="viewRouteBtn" class="btn-primary" style="margin-top:10px" disabled>View Route</button>
+      <button id="viewBusLocationBtn" class="btn-warn" style="margin-top:6px" disabled>View Bus Location</button>
+    </div>
 
-<div id="search-bar">
-  <input type="text" id="searchInput" placeholder="Search by bus number or name..." />
-  <button onclick="searchBus()">Search</button>
-  <button onclick="startVoice()">🎙️ Start</button>
-  <button onclick="stopVoice()">🛑 Stop</button>
-  <button onclick="openBusPopup()">🚌 Select Bus</button>
-</div>
-
-<div id="map"></div>
-
-<div id="message-box">
-  <input type="text" id="message" placeholder="Send message to driver..." />
-  <button onclick="sendMessage()">Send</button>
-</div>
-
-<!-- Modal Popup -->
-<div id="busModal">
-  <div id="busModalContent">
-    <span class="close-btn" onclick="closeBusPopup()">&times;</span>
-    <h3>Select a Bus</h3>
-    <div id="busList"></div>
+    <div class="footer">
+      <button id="logout" class="btn-danger">Logout</button>
+    </div>
   </div>
-</div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-  const map = L.map('map').setView([13.0827, 80.2707], 13);
-  const adminBuses = [
-    { id: "Bus101", name: "CSE Route", lat: 13.0827, lng: 80.2707 },
-    { id: "Bus102", name: "ECE Route", lat: 13.07, lng: 80.25 },
-    { id: "Bus103", name: "MECH Route", lat: 13.06, lng: 80.28 }
-  ];
+  <div id="map"></div>
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  <!-- Profile Drawer -->
+  <div class="drawer" id="drawer">
+    <div class="panel">
+      <h2>My Profile</h2>
+      <p class="muted">Edit your details and photo. Changes broadcast live.</p>
+      <div class="row">
+        <label>Photo</label>
+        <img id="avatar" src="https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:1px solid #1f2a44" />
+        <input type="file" id="photo" accept="image/*"/>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <label>Full Name</label>
+        <input type="text" id="name"/>
+        <label>Email</label>
+        <input type="email" id="email" disabled/>
+        <label>Roll No</label>
+        <input type="text" id="rollNo"/>
+        <label>Department</label>
+        <input type="text" id="department"/>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="saveProfile" class="btn-primary">Save Profile</button>
+        <button id="closeDrawer" class="ghost" style="background:#0a1222;border:1px solid #1f2a44;color:#cbd5e1">Close</button>
+      </div>
+      <div class="muted" id="pStatus" style="margin-top:8px"></div>
+    </div>
+  </div>
 
-  let driverMarker = null;
-  let driverIndex = 0;
-  let livePath = [];
-  let simulationInterval;
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ---------- auth ----------
+    const user = JSON.parse(localStorage.getItem('user')||'null');
+    if(!user || user.role!=='faculty'){ location.href='login1.html'; }
 
-  function searchBus() {
-    const query = document.getElementById('searchInput').value.toLowerCase();
-    const found = adminBuses.find(bus =>
-      bus.id.toLowerCase().includes(query) || bus.name.toLowerCase().includes(query)
-    );
-
-    if (found) {
-      map.setView([found.lat, found.lng], 15);
-      if (driverMarker) map.removeLayer(driverMarker);
-      simulateLiveMovement(found);
-    } else {
-      alert("No matching bus found.");
+    const chipName=document.getElementById('chipName');
+    const chipEmail=document.getElementById('chipEmail');
+    const chipImg=document.getElementById('chipImg');
+    function setChip(u){
+      chipName.textContent = u.name || 'Student';
+      chipEmail.textContent = u.email || '';
+      chipImg.src = u.profile_photo ? ('/uploads/'+u.profile_photo) : 'https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1';
     }
-  }
+    setChip(user);
 
-  function simulateLiveMovement(bus) {
-    clearInterval(simulationInterval);
-    livePath = [
-      [bus.lat, bus.lng],
-     
-    ];
-    driverIndex = 0;
+    // ---------- map ----------
+    const socket = io();
+    const map = L.map('map').setView([13.0827,80.2707], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 
-    driverMarker = L.marker(livePath[0]).addTo(map)
-      .bindPopup(`${bus.id} - ${bus.name}`).openPopup();
+    let routes=[], routingControl=null, stopMarkers=[], busMarkers={}, showingBusLocation=false;
 
-    simulationInterval = setInterval(() => {
-      driverIndex = (driverIndex + 1) % livePath.length;
-      driverMarker.setLatLng(livePath[driverIndex]);
-      map.setView(livePath[driverIndex]);
-    }, 1500);
-  }
-
-  function sendMessage() {
-    const msg = document.getElementById('message').value;
-    if (msg.trim()) {
-      alert("Message sent to driver: " + msg);
-      console.log("Message sent to driver:", msg);
-      document.getElementById('message').value = "";
+    async function loadBuses(){
+      try{
+        const r = await fetch('/buses'); if(!r.ok) throw 0; routes = await r.json();
+      }catch{
+        const r = await fetch('/buses.json'); routes = await r.json();
+      }
+      const sel = document.getElementById('busSelect');
+      sel.innerHTML = '<option value="">--Select Bus--</option>';
+      routes.forEach(r=> sel.innerHTML += `<option value="${r.id}">${r.bus_number} - ${r.route_name}</option>`);
+      resetDetails();
     }
-  }
+    loadBuses();
 
-  // Voice Search
-  let recognition;
-  function startVoice() {
-    if (!('webkitSpeechRecognition' in window)) {
-      alert("Speech recognition not supported in this browser.");
-      return;
-    }
-
-    recognition = new webkitSpeechRecognition();
-    recognition.lang = 'en-IN';
-    recognition.interimResults = false;
-    recognition.continuous = false;
-
-    recognition.onresult = function (event) {
-      const transcript = event.results[0][0].transcript;
-      document.getElementById("searchInput").value = transcript;
+    const busDetails = {
+      wrap: document.getElementById('busDetails'),
+      bus: document.getElementById('detailBusNumber'),
+      driver: document.getElementById('detailDriverName'),
+      phone: document.getElementById('detailDriverPhone'),
+      route: document.getElementById('detailRouteName')
     };
 
-    recognition.onerror = function (event) {
-      console.error("Speech recognition error:", event.error);
-    };
+    function resetDetails(){
+      busDetails.wrap.style.display='none';
+      document.getElementById('stopListContainer').style.display='none';
+      document.getElementById('stopList').innerHTML='';
+      document.getElementById('viewRouteBtn').disabled=true;
+      document.getElementById('viewBusLocationBtn').disabled=true;
+      showingBusLocation=false;
+      clearRouteAndMarkers();
+      removeBusMarker();
+    }
 
-    recognition.start();
-  }
+    document.getElementById('busSelect').addEventListener('change', ()=>{
+      const id = document.getElementById('busSelect').value;
+      if(!id){ resetDetails(); return; }
+      const bus = routes.find(r=> r.id==id);
+      if(!bus){ resetDetails(); return; }
+      busDetails.wrap.style.display='block';
+      busDetails.bus.textContent = bus.bus_number || '-';
+      busDetails.driver.textContent = bus.driver_name || '-';
+      busDetails.phone.textContent = bus.driver_phone || '-';
+      busDetails.route.textContent = bus.route_name || '-';
 
-  function stopVoice() {
-    if (recognition) recognition.stop();
-  }
-
-  // Modal functions
-  function openBusPopup() {
-    const busList = document.getElementById('busList');
-    busList.innerHTML = '';
-
-    adminBuses.forEach(bus => {
-      const div = document.createElement('div');
-      div.className = 'bus-option';
-      div.innerText = `${bus.id} - ${bus.name}`;
-      div.onclick = () => {
-        document.getElementById('searchInput').value = bus.id;
-        closeBusPopup();
-        searchBus();
-      };
-      busList.appendChild(div);
+      if(bus.stops?.length){
+        const list = document.getElementById('stopList');
+        list.innerHTML = bus.stops.map((s,i)=>`<div>${i+1}. ${s.stop_name}</div>`).join('');
+        document.getElementById('stopListContainer').style.display='block';
+      }
+      document.getElementById('viewRouteBtn').disabled=false;
+      document.getElementById('viewBusLocationBtn').disabled=false;
+      showingBusLocation=false; clearRouteAndMarkers(); removeBusMarker();
     });
 
-    document.getElementById('busModal').style.display = 'block';
-  }
+    function clearRouteAndMarkers(){
+      if(routingControl){ map.removeControl(routingControl); routingControl=null; }
+      stopMarkers.forEach(m=>map.removeLayer(m)); stopMarkers=[];
+    }
+    function removeBusMarker(){
+      if(busMarkers.currentBus){ map.removeLayer(busMarkers.currentBus); busMarkers.currentBus=null; }
+    }
 
-  function closeBusPopup() {
-    document.getElementById('busModal').style.display = 'none';
-  }
-</script>
+    document.getElementById('viewRouteBtn').onclick = ()=>{
+      const id = document.getElementById('busSelect').value; if(!id) return;
+      clearRouteAndMarkers();
+      const bus = routes.find(r=> r.id==id); if(!bus || !bus.stops.length) return;
+      bus.stops.forEach(s=>{
+        const marker = L.marker([s.latitude,s.longitude]).addTo(map).bindPopup(s.stop_name);
+        stopMarkers.push(marker);
+      });
+      if(bus.stops.length>1){
+        routingControl = L.Routing.control({
+          waypoints: bus.stops.map(s=>L.latLng(s.latitude,s.longitude)),
+          addWaypoints:false, draggableWaypoints:false, createMarker:()=>null, show:false,
+          lineOptions:{styles:[{color:'dodgerblue',opacity:.85,weight:6}]}
+        }).addTo(map);
+        routingControl.on('routesfound', e=>{ if(e.routes.length) map.fitBounds(e.routes[0].bounds); });
+      }else{
+        map.setView([bus.stops[0].latitude,bus.stops[0].longitude],15);
+      }
+    };
+
+    document.getElementById('viewBusLocationBtn').onclick = ()=>{
+      const id = document.getElementById('busSelect').value; if(!id) return;
+      if(showingBusLocation){
+        removeBusMarker(); showingBusLocation=false;
+        document.getElementById('viewBusLocationBtn').textContent='View Bus Location';
+      }else{
+        if(busMarkers[id]){
+          busMarkers.currentBus = busMarkers[id]; busMarkers.currentBus.addTo(map);
+          map.setView(busMarkers.currentBus.getLatLng(), 15);
+        }
+        showingBusLocation=true;
+        document.getElementById('viewBusLocationBtn').textContent='Hide Bus Location';
+      }
+    };
+
+    socket.on('driverLocationUpdate', data=>{
+      if(!busMarkers[data.busId]){
+        busMarkers[data.busId] = L.marker([data.latitude,data.longitude],{
+          icon: L.icon({iconUrl:'https://cdn-icons-png.flaticon.com/512/61/61168.png',iconSize:[32,32],iconAnchor:[16,16]})
+        });
+      }else{
+        busMarkers[data.busId].setLatLng([data.latitude,data.longitude]);
+      }
+      const selected = document.getElementById('busSelect').value;
+      if(showingBusLocation && String(data.busId)===String(selected)){
+        if(!map.hasLayer(busMarkers[data.busId])){
+          busMarkers[data.busId].addTo(map);
+          map.setView(busMarkers[data.busId].getLatLng(), 15);
+        }
+        busMarkers.currentBus = busMarkers[data.busId];
+      }
+    });
+
+    socket.on('driverStopped', data=>{
+      if(busMarkers[data.busId]){
+        if(map.hasLayer(busMarkers[data.busId])) map.removeLayer(busMarkers[data.busId]);
+        delete busMarkers[data.busId];
+        if(busMarkers.currentBus && busMarkers.currentBus===busMarkers[data.busId]){
+          busMarkers.currentBus=null; showingBusLocation=false;
+          document.getElementById('viewBusLocationBtn').textContent='View Bus Location';
+        }
+      }
+    });
+
+    // ---------- profile drawer ----------
+    const drawer = document.getElementById('drawer');
+    const pStatus = document.getElementById('pStatus');
+    const nameI = document.getElementById('name');
+    const emailI = document.getElementById('email');
+    const rollNoI = document.getElementById('rollNo');
+    const deptI = document.getElementById('department');
+    const avatar = document.getElementById('avatar');
+    const photo = document.getElementById('photo');
+
+    function openDrawer(){ drawer.style.display='block'; loadProfile(); }
+    function closeDrawer(){ drawer.style.display='none'; pStatus.textContent=''; }
+    document.getElementById('profileChip').onclick = openDrawer;
+    document.getElementById('closeDrawer').onclick = closeDrawer;
+    drawer.onclick = (e)=>{ if(e.target===drawer) closeDrawer(); };
+
+    async function loadProfile(){
+      try{
+        const r = await fetch(`/profile/${user.id}`);
+        const u = await r.json();
+        nameI.value = u.name||''; emailI.value = u.email||''; rollNoI.value = u.rollNo||''; deptI.value = u.department||'';
+        avatar.src = u.profile_photo ? ('/uploads/'+u.profile_photo) : 'https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1';
+      }catch(e){ pStatus.textContent='Failed to load profile'; }
+    }
+
+    document.getElementById('saveProfile').onclick = async ()=>{
+      try{
+        pStatus.textContent='Saving...';
+        const fd = new FormData();
+        fd.append('name', nameI.value);
+        fd.append('rollNo', rollNoI.value);
+        fd.append('department', deptI.value);
+        if(photo.files[0]) fd.append('photo', photo.files[0]);
+        const r = await fetch(`/profile/${user.id}`, {method:'POST', body:fd});
+        const j = await r.json();
+        if(!r.ok) throw new Error(j.error||'Save failed');
+        localStorage.setItem('user', JSON.stringify(j.user));
+        setChip(j.user);
+        avatar.src = j.user.profile_photo ? ('/uploads/'+j.user.profile_photo) : avatar.src;
+        pStatus.textContent='Saved.';
+      }catch(err){ pStatus.textContent = err.message; }
+    };
+
+    // live profile updates
+    socket.on('profileUpdated', (u)=>{
+      if(String(u.id)!==String(user.id)) return;
+      localStorage.setItem('user', JSON.stringify(u));
+      setChip(u);
+      if(drawer.style.display==='block'){
+        nameI.value=u.name||''; rollNoI.value=u.rollNo||''; deptI.value=u.department||'';
+        avatar.src=u.profile_photo?('/uploads/'+u.profile_photo):avatar.src;
+      }
+    });
+
+    // logout
+    document.getElementById('logout').onclick = ()=>{
+      localStorage.clear(); location.href='login1.html';
+    };
+  </script>
 </body>
 </html>

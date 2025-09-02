@@ -1,190 +1,837 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Admin Dashboard - Panimalar Bus Tracker</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<style>
-  body { margin:0; font-family:sans-serif; background:#0f172a; color:#f1f5f9; }
-  header { background:#1e293b; padding:10px; display:flex; justify-content:space-between; align-items:center; color:#38bdf8; }
-  button, input, select { padding:6px 10px; margin:4px; border:none; border-radius:5px; }
-  button { background:#3b82f6; color:white; cursor:pointer; }
-  button:hover { background:#2563eb; }
-  .container { display:flex; height:calc(100vh - 50px); }
-  .sidebar { width:320px; overflow-y:auto; background:#1e293b; padding:10px; }
-  .section { margin-bottom:20px; }
-  #map { flex:1; }
-  .card { background:#334155; padding:10px; margin:5px 0; border-radius:8px; }
-  .card button { background:#ef4444; margin-left:5px; }
-  .edit-btn { background:#f59e0b; }
-</style>
+  <meta charset="utf-8"/>
+  <title>Admin Dashboard — Bus Routes (Manage-first)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+  <style>
+    :root { color-scheme: dark }
+    body { margin: 0; font-family: Inter, Arial, Helvetica, sans-serif; background: #071224; color: #e6f7ff }     
+    header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #021022; border-bottom: 1px solid #123246 }
+    header h1 { margin: 0; font-size: 18px; color: #7fe3ff }
+    #app { display: flex; flex-direction: row; height: calc(100vh - 56px) }
+    #panel { width: 420px; padding: 12px; border-right: 1px solid #123a49; overflow: auto; background: #041226; box-sizing: border-box }
+    #map { flex: 1; min-height: 0 }
+    h3 { color: #c9f0ff; margin: 12px 0 6px; font-size: 15px }
+    label { display: block; font-size: 13px; margin-top: 8px; color: #bfe8ff }
+    input, select, button, textarea { width: 100%; padding: 8px; margin-top: 6px; border-radius: 8px; border: 0; background: #082034; color: #e7f6ff }
+    select[multiple] { height: 80px; }
+    button { background: #1e90ff; color: #04111a; font-weight: 700; cursor: pointer }
+    button.alt { background: #2aa04f }
+    .small { font-size: 12px; opacity: .9 }
+    ul { list-style: none; padding: 0; margin: 8px 0 }
+    li.item { background: #072135; border: 1px solid #133a49; margin-bottom: 8px; padding: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center }
+    .row { display: flex; gap: 8px }
+    .btn-mini { padding: 6px 8px; border-radius: 6px; cursor: pointer; border: 0; background: #ffd27a; color: #04121a; font-weight: 700 }
+    .btn-danger { background: #ff6b6b; color: #041018 }
+    .muted { color: #9fc9e6; font-size: 12px; margin-top: 6px }
+    .route-order { background: #021725; padding: 8px; border-radius: 8px; max-height: 200px; overflow: auto; margin-top: 6px }
+    .route-item { display: flex; align-items: center; justify-content: space-between; padding: 6px; margin-bottom: 6px; background: #042235; border-radius: 6px }
+    .hint { font-size: 12px; color: #9fc9e6; margin-top: 6px; opacity: .9 }
+    .controls-compact > * { flex: 1 }
+    .controls-compact { display: flex; gap: 8px; margin-top: 6px }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 9999 }
+    .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #032432; padding: 20px; border-radius: 0; color: #eaf6ff; overflow: auto; z-index: 9999; }
+    table { width: 100%; border-collapse: collapse; color: #eaf6ff }
+    th, td { padding: 6px; border-bottom: 1px solid #083a44; text-align: left; font-size: 13px }
+    .meta { font-size: 12px; color: #9fc9e6; margin-top: 6px }
+    .drag-handle { cursor: grab; padding: 0 6px; font-size: 16px; color: #7fe3ff; user-select: none }
+    .drag-handle:hover { color: #1e90ff }
+    .assigned-list { max-height: 320px; overflow: auto; border-radius: 6px; padding: 6px; background: #021d27 }
+    .assigned-item { display: flex; align-items: center; justify-content: space-between; padding: 6px; margin-bottom: 6px; background: #042235; border-radius: 6px }
+    .assigned-item.dragging { opacity: .45 }
+    .flex { display: flex; gap: 8px; align-items: center }
+    .muted-compact { font-size: 12px; color: #9fc9e6 }
+    .small-btn { padding: 6px 8px; border-radius: 6px; border: 0; background: #1e90ff; color: #041018; font-weight: 700; cursor: pointer }
+
+    /* Responsive: stack sidebar under map on small screen */
+    @media (max-width: 600px) {
+      #app { flex-direction: column; }
+      #panel { width: 100vw; max-width: 100vw; border-right: none; border-bottom: 1px solid #123a49; }
+      #map { min-height: 360px; min-width: 100vw; }
+      .modal { width: 98vw; max-width: 98vw; }
+    }
+  </style>
 </head>
 <body>
 <header>
-  <h1>Admin Dashboard</h1>
-  <button onclick="logout()">Logout</button>
+  <h1>🚍 Admin — Stops (Manage-first) → Assign → Road Routes</h1>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button onclick="logout()">Logout</button>
+    <button onclick="saveToServer()">Save</button>
+    <button class="alt" onclick="loadFromServer()">Load</button>
+  </div>
 </header>
-<div class="container">
-  <div class="sidebar">
-    <div class="section">
-      <h3>Add Bus</h3>
-      <input type="text" id="busNumber" placeholder="Bus Number" />
-      <input type="text" id="route" placeholder="Route Name" />
-      <select id="driverSelect"></select>
+<div id="app">
+  <div id="panel">
+    <!-- Buses -->
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3>Buses</h3>
+      <button class="btn-mini" onclick="openBusesTable()">Table</button>
+    </div>
+    <label>Bus name</label>
+    <input id="inputBusName" placeholder="e.g., Pandian Express"/>
+    <label style="margin-top:6px">Route number</label>
+    <input id="inputRouteNo" placeholder="e.g., 12A / PAN-01"/>
+    <div class="controls-compact">
       <button onclick="addBus()">Add Bus</button>
-      <div id="busList"></div>
+      <!-- CHANGED: Seed now loads ONLY from server, no fake data -->
+      <button class="btn-mini" onclick="seedFromServer()">Seed (Saved Buses)</button>
     </div>
-    <div class="section">
-      <h3>Drivers</h3>
-      <input type="text" id="driverName" placeholder="Driver Name" />
+    <ul id="busList"></ul>
+
+    <!-- Drivers -->
+    <h3>Drivers</h3>
+    <label>Driver name</label>
+    <input id="inputDriverName" placeholder="Driver name"/>
+    <div class="controls-compact">
       <button onclick="addDriver()">Add Driver</button>
-      <div id="driverList"></div>
     </div>
+    <ul id="driverList"></ul>
+
+    <div style="height:1px;background:#113343;margin:12px 0"></div>
+
+    <!-- Places search (Nominatim) -->
+    <h3>Add Stop — Search or Click</h3>
+    <label>Search place or address</label>
+    <input id="placeSearch" placeholder="Type a place; press Add" />
+    <div class="controls-compact">
+      <button onclick="addStopFromSearch()">Add from Search</button>
+      <button class="btn-mini" onclick="clearPlaceSearch()">Clear</button>
+    </div>
+    <p class="hint">Search powered by Nominatim (OpenStreetMap) — no API key required.</p>
+    <label style="margin-top:10px">Add by map click</label>
+    <div class="controls-compact">
+      <input id="manualStopName" placeholder="Stop name (optional before click)"/>
+      <button onclick="enableAddByClick()">Click to Add</button>
+      <button class="btn-mini btn-danger" onclick="cancelAddByClick()">Finish</button>
+    </div>
+    <p class="muted">Click "Click to Add", then click on the map to place a stop.</p>
+
+    <h3>All Stops</h3>
+    <ul id="stopList"></ul>
+
+    <div style="height:1px;background:#113343;margin:12px 0"></div>
+
+    <!-- Route order -->
+    <h3>Route Order (temporary)</h3>
+    <label>Select a stop to add to order</label>
+    <select id="selectStopToOrder"></select>
+    <div class="controls-compact">
+      <button onclick="addSelectedStopToOrder()">Add to Order</button>
+      <button class="btn-mini" onclick="clearRouteOrder()">Clear Order</button>
+    </div>
+    <div class="route-order">
+      <ol id="routeOrderList"></ol>
+    </div>
+    <div class="controls-compact" style="margin-top:8px">
+      <button onclick="moveOrder(-1)">Move Up</button>
+      <button onclick="moveOrder(1)">Move Down</button>
+      <button class="btn-danger" onclick="removeOrderSelected()">Remove</button>
+    </div>
+
+    <div style="height:1px;background:#113343;margin:12px 0"></div>
+
+    <!-- Assign & Draw -->
+    <h3>Assign & Draw</h3>
+    <label>Select bus</label>
+    <select id="selectBusForAssign"></select>
+    <label style="margin-top:8px">Assign driver(s) to selected bus</label>
+    <select id="selectDriversForAssign" multiple></select>
+    <div class="controls-compact">
+      <button onclick="assignDriversToBus()">Assign Driver(s)</button>
+    </div>
+    <label style="margin-top:8px">Draw road route for selected bus</label>
+    <div class="controls-compact">
+      <button onclick="drawRouteForSelectedBus()">Draw Road Route</button>
+      <button class="alt" onclick="drawRouteForSelectedBus(true)">Draw + Show Steps</button>
+    </div>
+    <p class="hint">Uses Leaflet Routing Machine (OSRM) for roadway routing. Waypoint limits apply.</p>
+    <div style="height:1px;background:#113343;margin:12px 0"></div>
+    <div class="muted">Data persists to server at <code>/api/data</code> (POST/GET). If server unavailable, app uses localStorage.</div>
   </div>
   <div id="map"></div>
 </div>
 
+<!-- Manage modal (central) -->
+<div id="manageModal" class="modal-overlay" style="display:none">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 id="manageTitle">Manage Stops</h3>
+      <div style="display:flex;gap:8px">
+        <button onclick="saveManage()" class="small-btn">Save</button>
+        <button class="btn-mini" onclick="closeManage()">Close</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+      <div>
+        <div class="small">All Stops</div>
+        <div id="allStopsBox" style="max-height:420px;overflow:auto;margin-top:6px;border-radius:6px;padding:6px;background:#021725"></div>
+      </div>
+      <div>
+        <div class="small">Assigned Stops (drag to reorder)</div>
+        <div id="assignedBox" class="assigned-list" style="margin-top:6px"></div>
+        <label style="margin-top:8px">Boarding point</label>
+        <select id="modalBoarding"><option value="">-- none --</option></select>
+        <div class="controls-compact" style="margin-top:6px">
+          <button onclick="setBoardingFromModal()">Set Boarding</button>
+          <button class="btn-mini" onclick="setBoardingByMapModal()">Set by Map</button>
+        </div>
+        <label style="margin-top:8px">End point</label>
+        <select id="modalEnd"><option value="">-- none --</option></select>
+        <div class="controls-compact" style="margin-top:6px">
+          <button onclick="setEndFromModal()">Set End</button>
+          <button class="btn-mini" onclick="setEndByMapModal()">Set by Map</button>
+        </div>
+        <div class="controls-compact" style="margin-top:8px">
+          <input id="manualStopNameModal" placeholder="Stop name (optional before click)"/>
+          <button onclick="enableAddByClick()">Click to Add</button>
+          <button class="btn-mini btn-danger" onclick="cancelAddByClick()">Finish</button>
+        </div>
+        <div class="muted-compact" style="margin-top:8px">Tip: Use the "Set by Map" then click on the map to place the Boarding / End stop.</div>
+      </div>
+    </div>
+  </div>
+</div>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
 <script>
-const socket = io();
 let buses = [];
 let drivers = [];
-let markers = {};
+let stops = [];
+let stopMarkers = {};
+let routeOrder = [];
+let selectedOrderIndex = -1;
+let addByClickEnabled = false;
+let map;
+let currentBusId = null;
+let pendingBoardingModal = null;
+let pendingEndModal = null;
 
-let map = L.map('map').setView([13.0827, 80.2707], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+const uid = (p='id') => p + '_' + Math.random().toString(36).slice(2,9);
+const findStop = id => stops.find(s => s.id === id);
+const findBus = id => buses.find(b => b.id === id);
+const findDriver = id => drivers.find(d => d.id === id);
+function randColor(){ return '#' + Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0'); }
 
-// Receive buses from server
-socket.on("buses", (data) => {
-  buses = data;
-  renderBuses();
-  updateMapMarkers();
-});
+map = L.map('map').setView([13.0827, 80.2707], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-// Receive drivers from server
-socket.on("drivers", (data) => {
-  drivers = data;
-  renderDrivers();
-});
-
-// Receive live location updates
-socket.on("location_update", ({ busId, lat, lng }) => {
-  if (markers[busId]) {
-    markers[busId].setLatLng([lat, lng]);
-  }
-});
-
-// Logout
-function logout() {
-  localStorage.clear();//clear login state
-  window.location.href = "login1.html";
-}
-
-// Add driver with duplicate protection
-function addDriver() {
-  const name = document.getElementById('driverName').value.trim();
-  if (!name) return alert("Enter driver name");
-
-  if (drivers.some(d => d.toLowerCase() === name.toLowerCase())) {
-    return alert("Driver already exists!");
-  }
-
-  socket.emit("addDriver", name);
-  document.getElementById('driverName').value = '';
-}
-
-// Delete driver
-function deleteDriver(name) {
-  if (confirm(`Delete driver ${name}?`)) {
-    socket.emit("deleteDriver", name);
-  }
-}
-
-// Render drivers
-function renderDrivers() {
-  const driverSelect = document.getElementById('driverSelect');
-  const driverList = document.getElementById('driverList');
-  driverList.innerHTML = '';
-  driverSelect.innerHTML = '<option value="">Select Driver</option>';
-  drivers.forEach(d => {
-    driverSelect.innerHTML += `<option value="${d}">${d}</option>`;
-    driverList.innerHTML += `<div class="card">${d} 
-      <button onclick="deleteDriver('${d}')">Delete</button></div>`;
-  });
-}
-
-// Add bus with duplicate protection
-function addBus() {
-  const id = document.getElementById('busNumber').value.trim();
-  const name = document.getElementById('route').value.trim();
-  const driver = document.getElementById('driverSelect').value;
-
-  if (!id || !name || !driver) return alert("Fill all fields");
-
-  if (buses.some(b => b.id.toLowerCase() === id.toLowerCase())) {
-    return alert("Bus ID already exists!");
-  }
-
-  socket.emit("addBus", { id, name, driver });
-
-  document.getElementById('busNumber').value = '';
-  document.getElementById('route').value = '';
-}
-
-// Edit bus
-function editBus(id) {
-  const bus = buses.find(b => b.id === id);
-  if (!bus) return;
-
-  const newName = prompt("Enter new route name:", bus.name);
-  const newDriver = prompt("Enter new driver name:", bus.driver);
-
-  if (newName && newDriver) {
-    socket.emit("editBus", { id, name: newName, driver: newDriver });
-  }
-}
-
-// Delete bus
-function deleteBus(id) {
-  if (confirm("Delete this bus?")) {
-    socket.emit("deleteBus", id);
-  }
-}
-
-// Render buses
-function renderBuses() {
-  const busList = document.getElementById('busList');
-  busList.innerHTML = '';
-  buses.forEach(b => {
-    busList.innerHTML += `<div class="card">
-      <strong>${b.id}</strong><br/>${b.name}<br/>Driver: ${b.driver}
-      <button class="edit-btn" onclick="editBus('${b.id}')">Edit</button>
-      <button onclick="deleteBus('${b.id}')">Delete</button>
-    </div>`;
-  });
-}
-
-// Update map markers for buses
-function updateMapMarkers() {
-  buses.forEach(b => {
-    if (b.lat && b.lng) {
-      if (!markers[b.id]) {
-        markers[b.id] = L.marker([b.lat, b.lng])
-          .addTo(map)
-          .bindPopup(`${b.id} - ${b.name}`);
-      } else {
-        markers[b.id].setLatLng([b.lat, b.lng]);
-      }
-    } else {
-      if (markers[b.id]) {
-        map.removeLayer(markers[b.id]);
-        delete markers[b.id];
-      }
+map.on('click', (e) => {
+  if (pendingBoardingModal) {
+    const b = findBus(pendingBoardingModal.busId);
+    if (b) {
+      const id = uid('stop');
+      const name = `Boarding - ${b.name}`;
+      stops.push({ id, name, lat: e.latlng.lat, lon: e.latlng.lng });
+      addMarkerForStop(id);
+      b.boardingId = id;
+      if (!b.stops.includes(id)) b.stops.unshift(id);
+      pendingBoardingModal = null;
+      renderAll();
+      alert('Boarding set for ' + b.name);
     }
+    return;
+  }
+  if (pendingEndModal) {
+    const b = findBus(pendingEndModal.busId);
+    if (b) {
+      const id = uid('stop');
+      const name = `End - ${b.name}`;
+      stops.push({ id, name, lat: e.latlng.lat, lon: e.latlng.lng });
+      addMarkerForStop(id);
+      b.endId = id;
+      if (!b.stops.includes(id)) b.stops.push(id);
+      pendingEndModal = null;
+      renderAll();
+      alert('End set for ' + b.name);
+    }
+    return;
+  }
+  if (!addByClickEnabled) return;
+  const assignBusId = currentBusId || document.getElementById('selectBusForAssign').value;
+  if (!assignBusId) {
+    alert('Open Manage on a bus first (or select from dropdown)!');
+    addByClickEnabled = false;
+    return;
+  }
+  const b = findBus(assignBusId);
+  if (!b) {
+    alert('Invalid bus selected');
+    addByClickEnabled = false;
+    return;
+  }
+  const nameInput =
+    (document.getElementById('manualStopNameModal') && document.getElementById('manualStopNameModal').value.trim())
+    || (document.getElementById('manualStopName') && document.getElementById('manualStopName').value.trim())
+    || '';
+  const name = nameInput || prompt('Enter stop name for this location:');
+  if (!name) return alert('Stop name required');
+  const id = uid('stop');
+  const lat = e.latlng.lat, lon = e.latlng.lng;
+  stops.push({ id, name, lat, lon });
+  addMarkerForStop(id);
+  if (!b.stops.includes(id)) b.stops.push(id);
+  const sidebarInput = document.getElementById('manualStopName');
+  if (sidebarInput) sidebarInput.value = '';
+  renderAll();
+});
+
+function renderAll(){
+  renderBuses();
+  renderDrivers();
+  renderStops();
+  renderRouteOrder();
+  renderDriverMultiSelect();
+  drawBusPolylines();
+}
+function renderBuses(){
+  const ul = document.getElementById('busList'), sel = document.getElementById('selectBusForAssign');
+  const prevSel = sel.value;
+  ul.innerHTML = ''; sel.innerHTML = '<option value="">-- select bus --</option>';
+  buses.forEach(b => {
+    let driverNames = b.driverIds && b.driverIds.length ? b.driverIds.map(id=>{ let d=findDriver(id); return d?d.name:'—'; }).join(', ') : '—';
+    const boardingName = b.boardingId ? (findStop(b.boardingId)?.name || '') : '';
+    const endName = b.endId ? (findStop(b.endId)?.name || '') : '';
+    const li = document.createElement('li'); li.className='item';
+    li.innerHTML = `
+      <div style="flex:1">
+        <strong>${b.name}</strong>
+        <div class="small">Route: ${b.routeNo || '—'}</div>
+        <div class="small">Driver(s): ${driverNames}</div>
+        <div class="small">Stops: ${b.stops.length} • Board: ${boardingName || '—'} • End: ${endName || '—'}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-mini" onclick="openManageStops('${b.id}')">Manage</button>
+        <button class="btn-mini" onclick="editBusPrompt('${b.id}')">Edit</button>
+        <button class="btn-mini" onclick="deleteBus('${b.id}')">Delete</button>
+        <button class="btn-mini" onclick="viewBusRoute('${b.id}')">View</button>
+      </div>`;
+    ul.appendChild(li);
+    const opt = document.createElement('option'); opt.value = b.id; opt.text = `${b.routeNo || ''} — ${b.name}`; sel.appendChild(opt);
+  });
+  if (currentBusId) sel.value = currentBusId;
+  else sel.value = prevSel || '';
+}
+function renderDrivers(){
+  const ul = document.getElementById('driverList');
+  ul.innerHTML = '';
+  drivers.forEach(d => {
+    const li = document.createElement('li'); li.className='item';
+    li.innerHTML = `
+      <div>${d.name}</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-mini" onclick="editDriver('${d.id}')">Edit</button>
+        <button class="btn-mini" onclick="deleteDriver('${d.id}')">Delete</button>
+      </div>`;
+    ul.appendChild(li);
   });
 }
+function renderStops(){
+  const ul = document.getElementById('stopList');
+  const sel = document.getElementById('selectStopToOrder');
+  ul.innerHTML = ''; sel.innerHTML = '<option value="">-- select stop --</option>';
+  stops.forEach(s => {
+    const li = document.createElement('li'); li.className='item';
+    li.innerHTML = `
+      <div>
+        <strong>${s.name}</strong>
+        <div class="small">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-mini" onclick="zoomToStop('${s.id}')">Zoom</button>
+        <button class="btn-mini" onclick="editStop('${s.id}')">Edit</button>
+        <button class="btn-mini btn-danger" onclick="deleteStop('${s.id}')">Delete</button>
+        <button class="btn-mini" onclick="addStopToOrder('${s.id}')">Add→Order</button>
+      </div>`;
+    ul.appendChild(li);
+    const opt = document.createElement('option'); opt.value = s.id; opt.text = s.name; sel.appendChild(opt);
+    if(!stopMarkers[s.id]) addMarkerForStop(s.id);
+    else stopMarkers[s.id].bindPopup(s.name);
+  });
+}
+function renderRouteOrder(){
+  const ol = document.getElementById('routeOrderList'); ol.innerHTML = '';
+  routeOrder.forEach((sid, idx) => {
+    const s = findStop(sid);
+    const li = document.createElement('li'); li.className='route-item';
+    li.dataset.index = idx;
+    li.innerHTML = `
+      <div style="flex:1"><strong>${idx+1}.</strong> ${s ? s.name : '(missing)'}</div>
+      <div style="display:flex;gap:6px"><button class="btn-mini" onclick="selectOrder(${idx})">Select</button></div>`;
+    if(idx === selectedOrderIndex) li.style.outline = '2px solid #1e90ff';
+    ol.appendChild(li);
+  });
+}
+function renderDriverMultiSelect() {
+  const busId = document.getElementById('selectBusForAssign').value;
+  const sel = document.getElementById('selectDriversForAssign');
+  sel.innerHTML = '';
+  drivers.forEach(d => {
+    const opt = document.createElement('option'); opt.value = d.id; opt.text = d.name;
+    sel.appendChild(opt);
+  });
+  if(busId){
+    const b = findBus(busId);
+    if(b && b.driverIds){
+      [...sel.options].forEach(opt => { opt.selected = b.driverIds.includes(opt.value); });
+    }
+  }
+}
+
+/* CRUD actions */
+function addBus(){
+  const name = document.getElementById('inputBusName').value.trim();
+  const routeNo = document.getElementById('inputRouteNo').value.trim() || prompt('Enter route number (e.g., 12A):') || '';
+  if(!name) return alert('Enter bus name');
+  buses.push({ id: uid('bus'), name, routeNo, driverIds:[], stops: [], boardingId: null, endId: null, color: randColor(), polyline: null });
+  document.getElementById('inputBusName').value = '';
+  document.getElementById('inputRouteNo').value = '';
+  renderAll();
+}
+function editBusPrompt(id){
+  const b = findBus(id); if(!b) return;
+  const n = prompt('Edit bus name:', b.name); if(n === null) return;
+  const r = prompt('Edit route number:', b.routeNo||''); if(r === null) return;
+  b.name = n.trim(); b.routeNo = r.trim();
+  renderAll(); tryAutoSave();
+}
+function deleteBus(id){
+  if(!confirm('Delete bus and its drawn route?')) return;
+  const idx = buses.findIndex(x => x.id === id); if(idx === -1) return;
+  if(buses[idx].polyline){ try{ map.removeControl(buses[idx].polyline); }catch(e){} buses[idx].polyline = null; }
+  if (currentBusId === id) currentBusId = null;
+  buses.splice(idx,1); renderAll();
+}
+function addDriver(){
+  const name = document.getElementById('inputDriverName').value.trim();
+  if(!name) return alert('Enter driver name');
+  drivers.push({ id: uid('drv'), name });
+  document.getElementById('inputDriverName').value = '';
+  renderAll();
+}
+function editDriver(id){
+  const d = findDriver(id); if(!d) return;
+  const n = prompt('Edit driver name:', d.name); if(n===null) return;
+  d.name = n.trim(); renderAll();
+}
+function deleteDriver(id){
+  if(!confirm('Delete driver?')) return;
+  const idx = drivers.findIndex(x=>x.id===id); if(idx===-1) return;
+  buses.forEach(b => { if(b.driverIds && b.driverIds.includes(id)) b.driverIds = b.driverIds.filter(dr=>dr!==id); });
+  drivers.splice(idx,1); renderAll();
+}
+function cancelAddByClick(){
+  addByClickEnabled = false;
+  alert('Stopped adding stops.');
+}
+
+/* Stops via Nominatim & click */
+async function addStopFromSearch(){
+  const placeInput = document.getElementById('placeSearch');
+  const assignBus = currentBusId || document.getElementById('selectBusForAssign').value;
+  if(!assignBus) return alert('Open Manage on a bus first (or select from dropdown)!');
+  if(!placeInput.value.trim()) return alert('Type a place name/address');
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeInput.value)}&limit=5`;
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const arr = await r.json();
+    if(!arr || !arr.length) return alert('Location not found');
+    const f = arr[0];
+    const id = uid('stop');
+    const name = f.display_name || placeInput.value;
+    const lat = parseFloat(f.lat), lon = parseFloat(f.lon);
+    stops.push({ id, name, lat, lon });
+    addMarkerForStop(id);
+    if(assignBus){
+      const b = findBus(assignBus); if(b && !b.stops.includes(id)) b.stops.push(id);
+    }
+    renderAll();
+    map.setView([lat,lon], 15);
+    placeInput.value = '';
+  }catch(e){ console.error(e); alert('Geocoding failed'); }
+}
+function clearPlaceSearch(){ document.getElementById('placeSearch').value=''; }
+function enableAddByClick(){
+  const assignBus = currentBusId || document.getElementById('selectBusForAssign').value;
+  if(!assignBus) return alert('Open Manage on a bus first (or select from dropdown)!');
+  addByClickEnabled = true;
+  alert('Click the map to add the stop (single-click).');
+}
+function addMarkerForStop(id){
+  const s = findStop(id);
+  if(!s) return;
+  if(stopMarkers[id]) try{ map.removeLayer(stopMarkers[id]); }catch(e){}
+  stopMarkers[id] = L.marker([s.lat, s.lon]).addTo(map).bindPopup(s.name);
+}
+
+/* Stop edit/delete/zoom */
+function editStop(id){
+  const s = findStop(id); if(!s) return;
+  const n = prompt('Edit stop name:', s.name);
+  if(n === null) return;
+  s.name = n.trim();
+  if(stopMarkers[id]) stopMarkers[id].bindPopup(s.name);
+  renderAll();
+  tryAutoSave();
+}
+function deleteStop(id){
+  if(!confirm('Delete stop?')) return;
+  if(stopMarkers[id]){ try{ map.removeLayer(stopMarkers[id]); }catch(e){} delete stopMarkers[id]; }
+  stops = stops.filter(x => x.id !== id);
+  buses.forEach(b => b.stops = b.stops.filter(sid => sid !== id));
+  routeOrder = routeOrder.filter(sid => sid !== id);
+  renderAll();
+  tryAutoSave();
+}
+function zoomToStop(id){
+  const s = findStop(id); if(!s) return;
+  map.setView([s.lat, s.lon], 16);
+  if(stopMarkers[id]) stopMarkers[id].openPopup();
+}
+function addSelectedStopToOrder(){
+  const sel = document.getElementById('selectStopToOrder');
+  if(!sel.value) return alert('Select a stop to add');
+  routeOrder.push(sel.value);
+  renderRouteOrder();
+}
+function addStopToOrder(id){ routeOrder.push(id); renderRouteOrder(); }
+function selectOrder(i){ selectedOrderIndex = i; renderRouteOrder(); }
+function moveOrder(dir){
+  if(selectedOrderIndex < 0 || selectedOrderIndex >= routeOrder.length) return alert('Select an order item first');
+  const newIndex = selectedOrderIndex + dir;
+  if(newIndex < 0 || newIndex >= routeOrder.length) return;
+  const tmp = routeOrder[selectedOrderIndex];
+  routeOrder[selectedOrderIndex] = routeOrder[newIndex];
+  routeOrder[newIndex] = tmp;
+  selectedOrderIndex = newIndex;
+  renderRouteOrder();
+}
+function removeOrderSelected(){ if(selectedOrderIndex < 0 || selectedOrderIndex >= routeOrder.length) return alert('Select item'); routeOrder.splice(selectedOrderIndex,1); selectedOrderIndex=-1; renderRouteOrder(); }
+function clearRouteOrder(){ if(!confirm('Clear route order?')) return; routeOrder=[]; selectedOrderIndex=-1; renderRouteOrder(); }
+
+/* Assign order to bus */
+function assignOrderToBus(){
+  const busId = document.getElementById('selectBusForAssign').value;
+  if(!busId) return alert('Select a bus first');
+  if(routeOrder.length < 1) return alert('Build a route order first');
+  const b = findBus(busId); if(!b) return;
+  b.stops = routeOrder.slice();
+  renderAll();
+  alert('Assigned current order to ' + b.name);
+  tryAutoSave();
+}
+
+let currentManageBus = null;
+function openManageStops(busId){
+  const bus = findBus(busId); if(!bus) return;
+  currentManageBus = bus;
+  currentBusId = busId;
+  document.getElementById('selectBusForAssign').value = busId;
+  document.getElementById('manageTitle').textContent = `Manage Stops — ${bus.name} (${bus.routeNo || '—'})`;
+  const allBox = document.getElementById('allStopsBox'), assignedBox = document.getElementById('assignedBox'),
+        boardingSel = document.getElementById('modalBoarding'), endSel = document.getElementById('modalEnd');
+  allBox.innerHTML = ''; assignedBox.innerHTML = ''; boardingSel.innerHTML = '<option value="">-- none --</option>'; endSel.innerHTML = '<option value="">-- none --</option>';
+
+  stops.forEach(s=>{
+    const inAssigned = bus.stops.includes(s.id);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid #083a44';
+    row.innerHTML = `
+      <div><strong>${s.name}</strong><div class="small">${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="btn-mini">${inAssigned ? 'Remove' : 'Add'}</button></div>`;
+    const btn = row.querySelector('button');
+    btn.onclick = () => {
+      if(inAssigned) { bus.stops = bus.stops.filter(x=>x!==s.id); }
+      else { bus.stops.push(s.id); }
+      openManageStops(busId);
+    };
+    allBox.appendChild(row);
+  });
+
+  function renderAssigned(){
+    assignedBox.innerHTML = '';
+    bus.stops.forEach((sid, idx) => {
+      const s = findStop(sid) || { name:'(missing)' };
+      const row = document.createElement('div');
+      row.className = 'assigned-item';
+      row.draggable = true;
+      row.dataset.sid = sid;
+      row.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px"><span class="drag-handle">☰</span><strong>${idx+1}.</strong> <span style="margin-left:6px">${s.name}</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-mini" title="Move up" onclick="manUp('${bus.id}',${idx})">↑</button>
+          <button class="btn-mini" title="Move down" onclick="manDown('${bus.id}',${idx})">↓</button>
+          <button class="btn-mini btn-danger" title="Delete" onclick="manDel('${bus.id}',${idx})">Del</button>
+        </div>`;
+      row.addEventListener('dragstart', (ev)=> { ev.dataTransfer.setData('text/plain', sid); row.classList.add('dragging'); });
+      row.addEventListener('dragend', ()=> { row.classList.remove('dragging'); });
+      row.addEventListener('dragover', (ev)=> { ev.preventDefault(); row.style.outline = '2px dashed #1e90ff'; });
+      row.addEventListener('dragleave', ()=> { row.style.outline = 'none'; });
+      row.addEventListener('drop', (ev)=> {
+        ev.preventDefault(); row.style.outline = 'none';
+        const draggedSid = ev.dataTransfer.getData('text/plain');
+        if(!draggedSid) return;
+        const from = bus.stops.indexOf(draggedSid);
+        const to = idx;
+        if(from === -1) return;
+        bus.stops.splice(from,1);
+        bus.stops.splice(to,0,draggedSid);
+        renderAssigned();
+      });
+      assignedBox.appendChild(row);
+      const opt1 = document.createElement('option'); opt1.value = sid; opt1.text = `${idx+1}. ${s.name}`; boardingSel.appendChild(opt1);
+      const opt2 = document.createElement('option'); opt2.value = sid; opt2.text = `${idx+1}. ${s.name}`; endSel.appendChild(opt2);
+    });
+    boardingSel.value = bus.boardingId || '';
+    endSel.value = bus.endId || '';
+  }
+  renderAssigned();
+  document.getElementById('manageModal').style.display = 'flex';
+}
+function manUp(busId, idx){ const b=findBus(busId); if(!b) return; if(idx<=0) return; [b.stops[idx-1],b.stops[idx]]=[b.stops[idx],b.stops[idx-1]]; openManageStops(busId); }
+function manDown(busId, idx){ const b=findBus(busId); if(!b) return; if(idx>=b.stops.length-1) return; [b.stops[idx+1],b.stops[idx]]=[b.stops[idx],b.stops[idx+1]]; openManageStops(busId); }
+function manDel(busId, idx){ const b=findBus(busId); if(!b) return; b.stops.splice(idx,1); openManageStops(busId); }
+function saveManage(){
+  if(!currentManageBus) return;
+  const boardingSel = document.getElementById('modalBoarding'), endSel = document.getElementById('modalEnd');
+  currentManageBus.boardingId = boardingSel.value || null;
+  currentManageBus.endId = endSel.value || null;
+  document.getElementById('manageModal').style.display = 'none';
+  tryAutoSave();
+  renderAll();
+}
+function closeManage(){ currentManageBus = null; document.getElementById('manageModal').style.display = 'none'; }
+function setBoardingFromModal(){ if(!currentManageBus) return alert('No bus loaded'); const s = document.getElementById('modalBoarding').value; if(s && currentManageBus.stops.includes(s)) currentManageBus.boardingId = s; else if(s) alert('Invalid'); renderAll(); tryAutoSave(); }
+function setEndFromModal(){ if(!currentManageBus) return alert('No bus loaded'); const s = document.getElementById('modalEnd').value; if(s && currentManageBus.stops.includes(s)) currentManageBus.endId = s; else if(s) alert('Invalid'); renderAll(); tryAutoSave(); }
+function setBoardingByMapModal(){ if(!currentManageBus) return alert('No bus loaded'); pendingBoardingModal = { busId: currentManageBus.id }; document.getElementById('manageModal').style.display='none'; alert('Click on map to place boarding point for ' + currentManageBus.name); }
+function setEndByMapModal(){ if(!currentManageBus) return alert('No bus loaded'); pendingEndModal = { busId: currentManageBus.id }; document.getElementById('manageModal').style.display='none'; alert('Click on map to place end point for ' + currentManageBus.name); }
+function assignDriversToBus(){
+  const busId = document.getElementById('selectBusForAssign').value;
+  if(!busId) return alert('Select a bus in "Assign & Draw"');
+  const b = findBus(busId); if(!b) return alert('Invalid bus');
+  const sel = document.getElementById('selectDriversForAssign');
+  const selDrivers = [...sel.selectedOptions].map(opt=>opt.value);
+  b.driverIds = selDrivers;
+  renderAll();
+  tryAutoSave();
+}
+function drawRouteForSelectedBus(showSteps=false){
+  const busId = document.getElementById('selectBusForAssign').value;
+  if(!busId) return alert('Select a bus first');
+  const b = findBus(busId); if(!b) return alert('Bus not found');
+  const stopIds = (b.stops && b.stops.length>=2) ? b.stops : (routeOrder.length>=2 ? routeOrder : []);
+  if(stopIds.length < 2) return alert('Bus needs at least 2 stops assigned or build a route order');
+  const waypoints = stopIds.map(id => {
+    const s = findStop(id);
+    if(!s) throw new Error('Stop missing: ' + id);
+    return L.latLng(s.lat, s.lon);
+  });
+  if(b.polyline){
+    try{ map.removeControl(b.polyline); }catch(e){}
+    b.polyline = null;
+  }
+  const rc = L.Routing.control({
+    waypoints,
+    router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' }),
+    lineOptions: { styles: [{ color: b.color || randColor(), opacity: 0.95, weight: 5 }] },
+    addWaypoints: false,
+    draggableWaypoints: false,
+    fitSelectedRoutes: true,
+    showAlternatives: false
+  }).addTo(map);
+  b.polyline = rc;
+  if(showSteps){
+    rc.on('routesfound', function(e){
+      const route = e.routes && e.routes[0];
+      if(!route || !route.coordinates) return;
+      const coords = route.coordinates;
+      const step = Math.max(1, Math.floor(coords.length / 20));
+      for (let i = 0; i < coords.length; i += step) {
+        const c = coords[i];
+        const m = L.circleMarker([c.lat, c.lng], { radius:3 }).addTo(map);
+        setTimeout(()=>{ try{ map.removeLayer(m); }catch(err){} }, 7000);
+      }
+    });
+  }
+  tryAutoSavePartial(b);
+  alert('Routing requested — OSRM/roadway path will be drawn.');
+}
+function viewBusRoute(busId){
+  const b = findBus(busId); if(!b) return alert('Bus not found');
+  if(b.polyline){
+    if(b.stops && b.stops.length){
+      const coords = b.stops.map(sid => { const s=findStop(sid); return s? [s.lat,s.lon] : null; }).filter(Boolean);
+      if(coords.length) map.fitBounds(coords);
+    }
+  } else {
+    alert('No drawn route for this bus yet');
+  }
+}
+function drawBusPolylines(){/* placeholder if needed later */ }
+function cleanForSave(busesArr){
+  return busesArr.map(b => {
+    const copy = Object.assign({}, b);
+    delete copy.polyline;
+    return copy;
+  });
+}
+async function saveToServer(){
+  const payload = { buses: cleanForSave(buses), drivers, stops, routeOrder };
+  try{
+    const res = await fetch('/api/data', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    if(!res.ok) throw new Error('server returned ' + res.status);
+    alert('Saved to server (buses.json).');
+  }catch(e){
+    localStorage.setItem('panimalar_admin_full', JSON.stringify(payload));
+    alert('Saved to localStorage (server unavailable).');
+  }
+}
+async function loadFromServer(){
+  try{
+    const res = await fetch('/api/data');
+    if(!res.ok) throw new Error('server responded ' + res.status);
+    const obj = await res.json();
+    if(obj && typeof obj === 'object' && (obj.buses || obj.stops || obj.drivers)){
+      buses = obj.buses || []; drivers = obj.drivers || []; stops = obj.stops || []; routeOrder = obj.routeOrder || [];
+      Object.values(stopMarkers).forEach(m => { try{ map.removeLayer(m); }catch(e){} }); stopMarkers = {};
+      stops.forEach(s => { stopMarkers[s.id] = L.marker([s.lat, s.lon]).addTo(map).bindPopup(s.name); });
+      buses.forEach(b => b.polyline = null);
+      renderAll();
+      alert('Loaded from server');
+      return;
+    }
+    throw new Error('invalid server payload');
+  }catch(e){
+    const raw = localStorage.getItem('panimalar_admin_full');
+    if(!raw) return alert('No saved session found (server and localStorage failed)');
+    try{
+      const obj = JSON.parse(raw);
+      buses = obj.buses || []; drivers = obj.drivers || []; stops = obj.stops || []; routeOrder = obj.routeOrder || [];
+      Object.values(stopMarkers).forEach(m => { try{ map.removeLayer(m); }catch(e){} }); stopMarkers = {};
+      stops.forEach(s => { stopMarkers[s.id] = L.marker([s.lat, s.lon]).addTo(map).bindPopup(s.name); });
+      buses.forEach(b => b.polyline = null);
+      renderAll();
+      alert('Loaded from localStorage');
+    }catch(ex){ alert('Load failed'); }
+  }
+}
+async function tryAutoSave(){
+  const payload = { buses: cleanForSave(buses), drivers, stops, routeOrder };
+  try{
+    await fetch('/api/data', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  }catch(e){ localStorage.setItem('panimalar_admin_full', JSON.stringify(payload)); }
+}
+async function tryAutoSavePartial(bus, routeObj){
+  try{ await tryAutoSave(); }catch(e){}
+}
+function resetAll(){
+  if(!confirm('Clear all data?')) return;
+  buses = []; drivers = []; stops = []; routeOrder = [];
+  Object.values(stopMarkers).forEach(m => { try{ map.removeLayer(m); }catch(e){} });
+  stopMarkers = {};
+  buses.forEach(b => { if(b.polyline) try{ map.removeControl(b.polyline); }catch(e){} });
+  renderAll();
+  tryAutoSave();
+}
+
+/* CHANGED: replaces old seedSample(). Only loads saved buses from server; no fake data */
+async function seedFromServer(){
+  try{
+    const res = await fetch('/api/data');
+    if(!res.ok) throw new Error('Server responded ' + res.status);
+    const obj = await res.json();
+    const srvBuses = obj?.buses || [];
+    const srvDrivers = obj?.drivers || [];
+    const srvStops = obj?.stops || [];
+    const srvOrder = obj?.routeOrder || [];
+
+    // replace current in-memory with server’s saved state
+    buses = srvBuses.map(b => ({ ...b, polyline: null }));
+    drivers = srvDrivers;
+    stops = srvStops;
+
+    // rebuild markers
+    Object.values(stopMarkers).forEach(m => { try{ map.removeLayer(m); }catch(e){} });
+    stopMarkers = {};
+    stops.forEach(s => { stopMarkers[s.id] = L.marker([s.lat, s.lon]).addTo(map).bindPopup(s.name); });
+
+    // do not overwrite your working order unless you want to:
+    routeOrder = srvOrder;
+
+    renderAll();
+
+    // Optional: open bus table so user sees what got seeded
+    openBusesTable();
+    alert(' loading saved buses only.');
+  }catch(err){
+    console.error(err);
+    alert('Failed to seed from server. Make sure /api/data returns saved data.');
+  }
+}
+
+function logout(){
+  if(!confirm('Are you sure you want to logout?')) return;
+  localStorage.clear();
+  buses = []; drivers = []; stops = []; routeOrder = [];
+  Object.values(stopMarkers).forEach(m => { try{ map.removeLayer(m); }catch(e){} });
+  stopMarkers = {};
+  buses.forEach(b => { if(b.polyline) try{ map.removeControl(b.polyline); }catch(e){} });
+  renderAll();
+  alert('You have been logged out.');
+  window.location.href = 'login1.html';
+}
+function openBusesTable(){
+  const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
+  overlay.style.zIndex = 10000;
+  const box = document.createElement('div'); box.className = 'modal';
+  let rows = '';
+  buses.forEach((b,i)=>{
+    let driverNames = b.driverIds && b.driverIds.length ? b.driverIds.map(id=>(findDriver(id)||{}).name).join(', ') : '';
+    const boarding = b.boardingId ? (findStop(b.boardingId)||{}).name : '';
+    const end = b.endId ? (findStop(b.endId)||{}).name : '';
+    const stopsText = (b.stops||[]).map(sid => (findStop(sid)||{name:'(missing)'}).name).join(' → ');
+    rows += `
+      <tr>
+        <td>${escapeHtml(b.name)}</td>
+        <td>${escapeHtml(b.routeNo)}</td>
+        <td>${escapeHtml(driverNames)}</td>
+        <td>${escapeHtml(boarding)}</td>
+        <td>${escapeHtml(end)}</td>
+        <td style="max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(stopsText)}</td>
+        <td>
+          <button class="btn-mini" onclick="openManageStops('${b.id}')">Manage</button>
+          <button class="btn-mini" onclick="drawRouteForBusIndex(${i})">Draw</button>
+          <button class="btn-mini btn-danger" onclick="deleteBus('${b.id}');document.body.removeChild(overlay);">Delete</button>
+        </td>
+      </tr>`;
+  });
+  box.innerHTML = `
+    <h3>All Buses</h3>
+    <table>
+      <thead><tr><th>Name</th><th>Route</th><th>Driver(s)</th><th>Board</th><th>End</th><th>Stops</th><th>Actions</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan=7 class="small">No buses</td></tr>'}</tbody>
+    </table>
+    <div style="margin-top:8px"><button id="closeB">Close</button></div>`;
+  overlay.appendChild(box); document.body.appendChild(overlay);
+  box.querySelector('#closeB').onclick = () => document.body.removeChild(overlay);
+}
+function drawRouteForBusIndex(index){ const b = buses[index]; if(!b) return; document.getElementById('selectBusForAssign').value = b.id; drawRouteForSelectedBus(); }
+function escapeHtml(str){ return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// initial render
+renderAll();
+
+// if you want to auto-load saved data on first open, uncomment:
+// loadFromServer();
+
+document.getElementById('selectBusForAssign').addEventListener('change', () => {
+  const v = document.getElementById('selectBusForAssign').value;
+  currentBusId = v || null;
+  renderDriverMultiSelect();
+});
 </script>
 </body>
 </html>

@@ -1,0 +1,97 @@
+{
+  "buses": [
+    {
+      "id": "bus_3f2mxq5",
+      "name": "anna nagar",
+      "routeNo": "90",
+      "driverIds": [
+        "drv_3ldyvp1"
+      ],
+      "stops": [
+        "stop_vf7s4wy",
+        "stop_nslce5y",
+        "stop_9f4hy6x",
+        "stop_pwhobb5",
+        "stop_51ocj4c",
+        "stop_g1x8y7b",
+        "stop_iw84vgs",
+        "stop_n5hllie",
+        "stop_fdlpa1u",
+        "stop_16849ui"
+      ],
+      "boardingId": "stop_vf7s4wy",
+      "endId": "stop_16849ui",
+      "color": "#c19dec"
+    }
+  ],
+  "drivers": [
+    {
+      "id": "drv_3ldyvp1",
+      "name": "benis"
+    }
+  ],
+  "stops": [
+    {
+      "id": "stop_vf7s4wy",
+      "name": "Kilpauk Garden, Ward 102, Zone 8 Anna Nagar, Chennai, Tamil Nadu, 600001, India",
+      "lat": 13.0845407,
+      "lon": 80.2311064
+    },
+    {
+      "id": "stop_nslce5y",
+      "name": "water tank",
+      "lat": 13.088509922781347,
+      "lon": 80.23090469599691
+    },
+    {
+      "id": "stop_9f4hy6x",
+      "name": "madina mosque",
+      "lat": 13.093460108382825,
+      "lon": 80.22485839959893
+    },
+    {
+      "id": "stop_pwhobb5",
+      "name": "1st avenue",
+      "lat": 13.091999637873922,
+      "lon": 80.22359671596703
+    },
+    {
+      "id": "stop_51ocj4c",
+      "name": "bougainvilla park",
+      "lat": 13.09205185480106,
+      "lon": 80.22087051624958
+    },
+    {
+      "id": "stop_g1x8y7b",
+      "name": "eye hospital",
+      "lat": 13.092266144181314,
+      "lon": 80.2128327962423
+    },
+    {
+      "id": "stop_iw84vgs",
+      "name": "dindigul thalapakatti restaurant",
+      "lat": 13.082448754536204,
+      "lon": 80.20956389162649
+    },
+    {
+      "id": "stop_n5hllie",
+      "name": "purple optics",
+      "lat": 13.082699885698679,
+      "lon": 80.20257215400498
+    },
+    {
+      "id": "stop_fdlpa1u",
+      "name": "VR Mall Chennai",
+      "lat": 13.082070627289609,
+      "lon": 80.19870073750137
+    },
+    {
+      "id": "stop_16849ui",
+      "name": "panimalar engineering college",
+      "lat": 13.047384762570237,
+      "lon": 80.07533435044371
+    }
+  ],
+  "routeOrder": [],
+  "savedAt": "2025-09-02T02:46:39.095Z"
+}
