@@ -1,83 +1,182 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>About | Panimalar Bus Tracker</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
+    :root {
+      --primary-light: #1e3c72;   /* Lighter Navy */
+      --primary: #162447;        /* Dark Blue */
+      --primary-dark: #0d1b2a;   /* Deep Navy */
+      --secondary: #f5c518;      /* Gold Accent */
+      --white: #ffffff;
+      --gray-light: #f5f7fa;
+      --text-dark: #1a1a1a;
+      --text-light: #eaeaea;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--gray-light);
+      color: var(--text-dark);
+      line-height: 1.7;
+    }
+
+    /* Section Titles */
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--primary-light), var(--primary-dark));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+      margin-bottom: 18px;
+      position: relative;
+      display: inline-block;
+    }
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 70px;
+      height: 4px;
+      background: var(--secondary);
+      margin: 10px auto 0;
+      border-radius: 2px;
+    }
+
+    /* Fade animation */
     .fade-up {
       opacity: 0;
       transform: translateY(30px);
       animation: fadeUp 1s ease forwards;
     }
-
     @keyframes fadeUp {
-      to {
-        opacity: 1;
-        transform: translateY(0);
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Info Cards */
+    .info-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 15px auto;
+      max-width: 700px;
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      border-left: 5px solid var(--secondary);
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+    .info-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.18);
+    }
+
+    /* Feature & Developer Cards */
+    .feature-box, .developer-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      border-top: 5px solid var(--secondary);
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+    .feature-box:hover, .developer-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.18);
+    }
+
+    .developer-card h4 {
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    .developer-card p {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .developer-card img {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      margin-bottom: 12px;
+      object-fit: cover;
+      border: 3px solid var(--secondary);
+    }
+
+    /* Layout helpers */
+    section { padding: 70px 20px; }
+    .text-center { text-align: center; }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    /* Grid */
+    .grid { display: grid; gap: 20px; }
+
+    /* Features Grid: Fixed 3 columns */
+    .features-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* Developers Grid: Auto-fit */
+    .developers-grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    /* Footer */
+    footer {
+      background: linear-gradient(90deg, var(--primary-dark), var(--primary-light));
+      color: var(--text-light);
+      text-align: center;
+      padding: 20px;
+      font-size: 0.9rem;
+      margin-top: 40px;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
-
-    .section-title {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #60a5fa;
-      position: relative;
-      display: inline-block;
-    }
-
-    .section-title::after {
-      content: '';
-      display: block;
-      width: 60px;
-      height: 4px;
-      background: #60a5fa;
-      margin: 8px auto 0;
-      border-radius: 2px;
-    }
-
-    .developer-card:hover {
-      transform: translateY(-5px);
-      transition: all 0.3s ease-in-out;
-      box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .feature-box:hover {
-      background-color: #1e3a8a;
-      transform: scale(1.02);
-      transition: 0.3s ease;
+    @media (max-width: 600px) {
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+      .section-title { font-size: 1.6rem; }
+      .info-card, .feature-box, .developer-card { padding: 15px; }
     }
   </style>
 </head>
-<body class="bg-gray-900 text-gray-200">
+<body>
 
   <!-- About Section -->
-  <section class="p-10 bg-gray-900 fade-up">
-    <h2 class="text-3xl section-title text-center mb-6">🚍 About Us</h2>
-    <div class="max-w-5xl mx-auto text-center text-gray-300">
-      <p class="mb-4">
-        The <strong>Panimalar Bus Tracker</strong> is a cutting-edge web platform aimed at transforming college transport management. This project simplifies real-time bus tracking, route planning, and monitoring across Panimalar Engineering College's transportation system.
+  <section class="fade-up">
+    <div class="container text-center">
+      <h2 class="section-title">🚍 About Us</h2>
+      <p>
+        The <strong>Panimalar Bus Tracker</strong> is a cutting-edge web platform aimed at transforming college transport management. 
+        This project simplifies real-time bus tracking, route planning, and monitoring across Panimalar Engineering College's transportation system.
       </p>
-      <p class="mb-4">
+      <p style="margin-top:15px;">
         Designed with accessibility and efficiency in mind, this system benefits all stakeholders—students, staff, and transport administrators—by delivering live updates, smooth coordination, and transparent management.
       </p>
 
-      <div class="my-8">
-        <h3 class="text-xl font-semibold text-blue-400 mb-2">🎯 Our Mission</h3>
-        <p class="mb-4">
-          To provide a secure, user-friendly, and technologically advanced bus tracking solution that ensures safety, punctuality, and transparency in college transportation.
-        </p>
-
-        <h3 class="text-xl font-semibold text-blue-400 mb-2">👁️ Our Vision</h3>
-        <p>
-          To set the benchmark for smart mobility systems within educational institutions across India, enabling smarter campuses and a safer commute for all.
-        </p>
+      <div class="info-card">
+        <h3>🎯 Our Mission</h3>
+        <p>To provide a secure, user-friendly, and technologically advanced bus tracking solution that ensures safety, punctuality, and transparency in college transportation.</p>
       </div>
 
-      <div class="my-10">
-        <h3 class="text-xl font-semibold text-blue-400 mb-4">💡 Why Choose Us?</h3>
-        <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto text-left list-disc list-inside">
+      <div class="info-card">
+        <h3>👁️ Our Vision</h3>
+        <p>To set the benchmark for smart mobility systems within educational institutions across India, enabling smarter campuses and a safer commute for all.</p>
+      </div>
+
+      <div class="info-card">
+        <h3>💡 Why Choose Us?</h3>
+        <ul style="text-align:left; list-style:disc; margin:15px auto; max-width:500px; padding-left:20px;">
           <li>Student-centric, intuitive dashboards</li>
           <li>Admin tools to assign, monitor, and manage routes & drivers</li>
           <li>Secure Firebase-based authentication</li>
@@ -86,50 +185,49 @@
         </ul>
       </div>
 
-      <div class="mt-10">
-        <h3 class="text-xl font-semibold text-blue-400 mb-4">🌐 Key Features</h3>
-        <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 max-w-4xl mx-auto">
-          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">📍 Real-time Bus Tracking</li>
-          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">🛡️ Role-Based Dashboards (Admin, Driver, Student)</li>
-          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">🗺️ Interactive Route Maps with Bus Stops</li>
-          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">🔐 Secure Firebase Authentication</li>
-          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">📱 Responsive Mobile Support</li>
-          <li class="bg-gray-800 p-4 rounded-xl shadow feature-box">⚙️ Admin Panel for Driver/Route Management</li>
-        </ul>
+      <h3 class="section-title" style="margin-top:50px;">🌐 Key Features</h3>
+      <div class="grid features-grid" style="margin-top:30px;">
+        <div class="feature-box">📍 Real-time Bus Tracking</div>
+        <div class="feature-box">🛡️ Role-Based Dashboards (Admin, Driver, Student)</div>
+        <div class="feature-box">🗺️ Interactive Route Maps with Bus Stops</div>
+        <div class="feature-box">🔐 Secure Firebase Authentication</div>
+        <div class="feature-box">📱 Responsive Mobile Support</div>
+        <div class="feature-box">⚙️ Admin Panel for Driver/Route Management</div>
       </div>
     </div>
   </section>
 
   <!-- Developers Section -->
-  <section class="p-10 bg-gray-800 fade-up">
-    <h2 class="text-3xl section-title text-center mb-10">👨‍💻 Meet the Developers of A-Squad</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-      <!-- Developer Cards -->
-      <div class="bg-gray-900 p-6 rounded-xl text-center shadow developer-card">
-        <img src="dev1.jpg" alt="Annamalai R" class="w-32 h-32 mx-auto rounded-full mb-4 object-cover" />
-        <h4 class="text-xl font-bold text-blue-300">Annamalai R</h4>
-        <p class="text-sm text-gray-400">Roll No: 2024PECAI337</p>
-      </div>
-      <div class="bg-gray-900 p-6 rounded-xl text-center shadow developer-card">
-        <img src="dev2.jpg" alt="Ajay Kumar N" class="w-32 h-32 mx-auto rounded-full mb-4 object-cover" />
-        <h4 class="text-xl font-bold text-blue-300">Ajay Kumar N</h4>
-        <p class="text-sm text-gray-400">Roll No: 2024PECAI326</p>
-      </div>
-      <div class="bg-gray-900 p-6 rounded-xl text-center shadow developer-card">
-        <img src="dev3.jpg" alt="Aswin V" class="w-32 h-32 mx-auto rounded-full mb-4 object-cover" />
-        <h4 class="text-xl font-bold text-blue-300">Aswin V</h4>
-        <p class="text-sm text-gray-400">Roll No: 2024PECAI345</p>
-      </div>
-      <div class="bg-gray-900 p-6 rounded-xl text-center shadow developer-card">
-        <img src="dev4.jpg" alt="Benis Antony Amalan J" class="w-32 h-32 mx-auto rounded-full mb-4 object-cover" />
-        <h4 class="text-xl font-bold text-blue-300">Benis Antony Amalan J</h4>
-        <p class="text-sm text-gray-400">Roll No: 2024PECAI348</p>
+  <section class="fade-up" style="background:var(--white);">
+    <div class="container text-center">
+      <h2 class="section-title">👨‍💻 Meet the Developers of A-Squad</h2>
+      <div class="grid developers-grid" style="margin-top:30px;">
+        <div class="developer-card">
+          <img src="dev1.jpg" alt="Annamalai R" />
+          <h4>Annamalai R</h4>
+          <p>Roll No: 2024PECAI337</p>
+        </div>
+        <div class="developer-card">
+          <img src="dev2.jpg" alt="Ajay Kumar N" />
+          <h4>Ajay Kumar N</h4>
+          <p>Roll No: 2024PECAI326</p>
+        </div>
+        <div class="developer-card">
+          <img src="dev3.jpg" alt="Aswin V" />
+          <h4>Aswin V</h4>
+          <p>Roll No: 2024PECAI345</p>
+        </div>
+        <div class="developer-card">
+          <img src="dev4.jpg" alt="Benis Antony Amalan J" />
+          <h4>Benis Antony Amalan J</h4>
+          <p>Roll No: 2024PECAI348</p>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="bg-gray-950 text-gray-300 text-center p-4 mt-10">
+  <footer>
     &copy; 2025 Panimalar Engineering College | A-Squad Bus Tracker Project | Second Year AI&DS
   </footer>
 

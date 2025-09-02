@@ -5,53 +5,115 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Panimalar Bus Tracker - Auth</title>
   <style>
-    * {margin: 0; padding: 0; box-sizing: border-box;}
+    :root {
+      --primary-light: #1e3c72;
+      --primary: #162447;
+      --primary-dark: #0d1b2a;
+      --secondary: #f5c518;
+      --white: #ffffff;
+      --gray-light: #f5f7fa;
+      --text-dark: #1a1a1a;
+      --text-light: #eaeaea;
+      --card-bg: #ffffff;
+      --card-shadow: rgba(0,0,0,0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', sans-serif;
-      background-color: #0f172a;
-      color: #f8fafc;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: var(--text-light);
       display: flex; justify-content: center; align-items: center;
-      height: 100vh;
+      min-height: 100vh;
+      padding: 20px;
     }
+
     .container {
-      background: #1e293b;
-      padding: 30px;
+      background: var(--white);
+      color: var(--text-dark);
+      padding: 30px 25px;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-      width: 90%; max-width: 400px; text-align: center;
-      animation: fadeIn 0.4s ease-in-out;
+      box-shadow: 0 6px 20px var(--card-shadow);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      animation: fadeIn 0.5s ease-in-out;
     }
-    h2 {margin-bottom: 15px; font-size: 26px; color: #38bdf8;}
-    .role-label {font-size: 14px; color: #94a3b8; margin-bottom: 20px;}
+
+    h2 {
+      margin-bottom: 15px;
+      font-size: 26px;
+      background: linear-gradient(90deg, var(--primary-light), var(--primary-dark));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .role-label {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
     button, input {
-      width: 100%; padding: 12px; margin: 10px 0;
-      border-radius: 6px; font-size: 15px;
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      font-size: 15px;
       transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
+      border: none;
     }
+
     button {
-      background: #3b82f6; color: #fff; border: none; cursor: pointer;
+      background: var(--secondary);
+      color: var(--primary-dark);
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
-    button:hover {background: #2563eb; transform: scale(1.02);}
+
+    button:hover {
+      background: #e6b800;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+
     input {
-      background: #0f172a; border: 1px solid #334155; color: #f1f5f9;
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      color: var(--text-dark);
     }
-    input::placeholder {color: #64748b;}
-    .toggle {margin-top: 15px; font-size: 14px; color: #94a3b8;}
-    .toggle a {color: #38bdf8; cursor: pointer; text-decoration: none;}
-    .toggle a:hover {text-decoration: underline;}
+
+    input::placeholder { color: #888; }
+
+    .toggle { margin-top: 15px; font-size: 14px; color: #555; }
+    .toggle a { color: var(--primary); cursor: pointer; text-decoration: none; }
+    .toggle a:hover { text-decoration: underline; }
+
     .role-buttons button {
-      margin: 6px 0; background: #1d4ed8;
-      box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+      margin: 6px 0;
+      background: var(--primary-light);
+      color: var(--white);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
+
     .role-buttons button:hover {
-      background: #2563eb;
-      box-shadow: 0 0 12px rgba(59, 130, 246, 0.7);
+      background: var(--primary);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.25);
       transform: scale(1.05);
     }
-    .hidden {display: none;}
+
+    .hidden { display: none; }
+
     @keyframes fadeIn {
       from {opacity: 0; transform: translateY(10px);}
       to {opacity: 1; transform: translateY(0);}
+    }
+
+    @media (max-width: 500px) {
+      .container { padding: 20px; }
+      h2 { font-size: 22px; }
+      input, button { padding: 10px; font-size: 14px; }
     }
   </style>
 </head>
@@ -71,25 +133,16 @@
   <h2 id="form-title">Login</h2>
   <p class="role-label">Logging in as: <span id="role-name">Student</span></p>
 
-  <!-- Login Form -->
   <form id="login-form" onsubmit="handleLogin(event)">
-    <input type="text" id="login-name" placeholder="Full Name" required />
     <input type="email" id="login-email" placeholder="Email" required />
     <input type="password" id="login-password" placeholder="Password" required />
     <button type="submit">Login</button>
   </form>
 
-  <!-- Signup Form -->
   <form id="signup-form" class="hidden" onsubmit="handleSignup(event)">
-    <input type="text" id="signup-name" placeholder="Full Name" required />
-    <input type="email" id="signup-email" placeholder="Email" required />
-    <!-- Role-specific fields -->
-    <input type="text" id="signup-roll" class="hidden" placeholder="Roll Number" />
-    <input type="text" id="signup-phone" class="hidden" placeholder="Phone Number" />
-    <input type="text" id="signup-admin" class="hidden" placeholder="Admin Number" />
-    <input type="text" id="signup-faculty" class="hidden" placeholder="Faculty ID" />
-    <input type="password" id="signup-password" placeholder="Password" required />
-    <input type="password" id="signup-confirm-password" placeholder="Confirm Password" required />
+    <input type="text" placeholder="Full Name" required />
+    <input type="email" placeholder="Email" required />
+    <input type="password" placeholder="Password" required />
     <button type="submit">Sign Up</button>
   </form>
 
@@ -99,24 +152,20 @@
   </p>
 
   <p class="toggle" style="margin-top: 10px;">
-    <a onclick="goBack()">← Back </a>
+    <a onclick="goBack()">← Back to role selection</a>
   </p>
 </div>
 
 <script>
-const API_BASE = `${window.location.protocol}//${window.location.host}`;
 let selectedRole = "Student";
-
 const loginForm = document.getElementById("login-form");
 const signupForm = document.getElementById("signup-form");
 const toggleText = document.getElementById("toggle-text");
 const toggleLink = document.getElementById("toggle-link");
 const formTitle = document.getElementById("form-title");
 const roleLabel = document.getElementById("role-name");
-const loginNameInput = document.getElementById("login-name");
-const signupNameInput = document.getElementById("signup-name");
 
-// On page load -> auto redirect if already logged in
+// On page load, check if already logged in
 window.onload = function() {
   const savedRole = localStorage.getItem("role");
   const loggedIn = localStorage.getItem("loggedIn");
@@ -130,22 +179,6 @@ function selectRole(role) {
   document.getElementById("role-selection").classList.add("hidden");
   document.getElementById("auth-container").classList.remove("hidden");
   roleLabel.textContent = role;
-
-  // Dynamic placeholder for login + signup
-  loginNameInput.placeholder = `${role} Name`;
-  signupNameInput.placeholder = `${role} Name`;
-
-  // Hide all extra fields first
-  document.getElementById("signup-roll").classList.add("hidden");
-  document.getElementById("signup-phone").classList.add("hidden");
-  document.getElementById("signup-admin").classList.add("hidden");
-  document.getElementById("signup-faculty").classList.add("hidden");
-
-  // Show role-specific field
-  if (role === "Student") document.getElementById("signup-roll").classList.remove("hidden");
-  if (role === "Driver") document.getElementById("signup-phone").classList.remove("hidden");
-  if (role === "Admin") document.getElementById("signup-admin").classList.remove("hidden");
-  if (role === "Faculty") document.getElementById("signup-faculty").classList.remove("hidden");
 }
 
 function goBack() {
@@ -167,74 +200,26 @@ function toggleForm() {
   toggleLink.textContent = isLogin ? "Login" : "Sign up";
 }
 
-// Handle Login
-async function handleLogin(event) {
+function handleLogin(event) {
   event.preventDefault();
-  const name = document.getElementById('login-name').value.trim();
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-
-  try {
-    const response = await fetch(`${API_BASE}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role: selectedRole }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) { alert(data.message || 'Login failed'); return; }
-
-    // Save session
-    localStorage.setItem('role', selectedRole);
-    localStorage.setItem('loggedIn', 'true');
-    if (data.token) localStorage.setItem('token', data.token);
-
-    redirectToDashboard(selectedRole);
-  } catch (err) {
-    alert('Error connecting to server.');
-  }
+  localStorage.setItem("role", selectedRole);
+  localStorage.setItem("loggedIn", "true");
+  redirectToDashboard(selectedRole);
 }
 
-// Handle Signup
-async function handleSignup(event) {
+function handleSignup(event) {
   event.preventDefault();
-  const name = document.getElementById('signup-name').value.trim();
-  const email = document.getElementById('signup-email').value.trim();
-  const password = document.getElementById('signup-password').value;
-  const confirmPassword = document.getElementById('signup-confirm-password').value;
-
-  if (password !== confirmPassword) {
-    alert("Passwords do not match!");
-    return;
-  }
-
-  const roll_number = document.getElementById('signup-roll').value;
-  const phone_number = document.getElementById('signup-phone').value;
-  const admin_number = document.getElementById('signup-admin').value;
-  const faculty_id = document.getElementById('signup-faculty').value;
-
-  try {
-    const response = await fetch(`${API_BASE}/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role: selectedRole, roll_number, phone_number, admin_number, faculty_id }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) { alert(data.message || 'Signup failed'); return; }
-
-    alert('Account created! You can now log in.');
-    toggleForm();
-  } catch (err) {
-    alert('Error connecting to server.');
-  }
+  alert("Account created! You can now log in.");
+  toggleForm();
 }
 
 function redirectToDashboard(role) {
-  if (role === "Admin") window.location.href = "admin_dashboard.html";
-  if (role === "Driver") window.location.href = "driver_dashboard.html";
-  if (role === "Faculty") window.location.href = "faculty_dashboard.html";
-  if (role === "Student") window.location.href = "student_dashboard.html";
+  switch (role) {
+    case "Admin":   window.location.href = "admin_dashboard.html"; break;
+    case "Driver":  window.location.href = "driver_dashboard.html"; break;
+    case "Faculty": window.location.href = "faculty_dashboard.html"; break;
+    case "Student": window.location.href = "student_dashboard.html"; break;
+  }
 }
 </script>
 
