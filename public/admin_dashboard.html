@@ -30,10 +30,10 @@
     .route-order { background: #021725; padding: 8px; border-radius: 8px; max-height: 200px; overflow: auto; margin-top: 6px }
     .route-item { display: flex; align-items: center; justify-content: space-between; padding: 6px; margin-bottom: 6px; background: #042235; border-radius: 6px }
     .hint { font-size: 12px; color: #9fc9e6; margin-top: 6px; opacity: .9 }
-    .controls-compact > * { flex: 1 }
-    .controls-compact { display: flex; gap: 8px; margin-top: 6px }
+    .controls-compact > * { flex: 1 ;}
+    .controls-compact { display:flex; gap:8px; margin-top:6px; justify-content:space-between } .controls-compact button { flex:1; width:auto }
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 9999 }
-    .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #032432; padding: 20px; border-radius: 0; color: #eaf6ff; overflow: auto; z-index: 9999; }
+    .modal { position: relative; width: 90vw; max-width: 1000px; height: 90vh; margin:auto; background:#032432; padding:20px; border-radius:12px; color:#eaf6ff; overflow:auto; z-index:9999 }
     table { width: 100%; border-collapse: collapse; color: #eaf6ff }
     th, td { padding: 6px; border-bottom: 1px solid #083a44; text-align: left; font-size: 13px }
     .meta { font-size: 12px; color: #9fc9e6; margin-top: 6px }
@@ -46,7 +46,6 @@
     .muted-compact { font-size: 12px; color: #9fc9e6 }
     .small-btn { padding: 6px 8px; border-radius: 6px; border: 0; background: #1e90ff; color: #041018; font-weight: 700; cursor: pointer }
 
-    /* Responsive: stack sidebar under map on small screen */
     @media (max-width: 600px) {
       #app { flex-direction: column; }
       #panel { width: 100vw; max-width: 100vw; border-right: none; border-bottom: 1px solid #123a49; }
@@ -57,7 +56,7 @@
 </head>
 <body>
 <header>
-  <h1>🚍 Admin — Stops (Manage-first) → Assign → Road Routes</h1>
+  <h1>🚍 Admin Stops</h1>
   <div style="display:flex;gap:8px;align-items:center">
     <button onclick="logout()">Logout</button>
     <button onclick="saveToServer()">Save</button>
@@ -66,7 +65,6 @@
 </header>
 <div id="app">
   <div id="panel">
-    <!-- Buses -->
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h3>Buses</h3>
       <button class="btn-mini" onclick="openBusesTable()">Table</button>
@@ -77,12 +75,10 @@
     <input id="inputRouteNo" placeholder="e.g., 12A / PAN-01"/>
     <div class="controls-compact">
       <button onclick="addBus()">Add Bus</button>
-      <!-- CHANGED: Seed now loads ONLY from server, no fake data -->
       <button class="btn-mini" onclick="seedFromServer()">Seed (Saved Buses)</button>
     </div>
     <ul id="busList"></ul>
 
-    <!-- Drivers -->
     <h3>Drivers</h3>
     <label>Driver name</label>
     <input id="inputDriverName" placeholder="Driver name"/>
@@ -93,7 +89,6 @@
 
     <div style="height:1px;background:#113343;margin:12px 0"></div>
 
-    <!-- Places search (Nominatim) -->
     <h3>Add Stop — Search or Click</h3>
     <label>Search place or address</label>
     <input id="placeSearch" placeholder="Type a place; press Add" />
@@ -115,7 +110,6 @@
 
     <div style="height:1px;background:#113343;margin:12px 0"></div>
 
-    <!-- Route order -->
     <h3>Route Order (temporary)</h3>
     <label>Select a stop to add to order</label>
     <select id="selectStopToOrder"></select>
@@ -134,7 +128,6 @@
 
     <div style="height:1px;background:#113343;margin:12px 0"></div>
 
-    <!-- Assign & Draw -->
     <h3>Assign & Draw</h3>
     <label>Select bus</label>
     <select id="selectBusForAssign"></select>
@@ -160,7 +153,7 @@
   <div class="modal" role="dialog" aria-modal="true">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h3 id="manageTitle">Manage Stops</h3>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-right:20px">
         <button onclick="saveManage()" class="small-btn">Save</button>
         <button class="btn-mini" onclick="closeManage()">Close</button>
       </div>
@@ -684,9 +677,11 @@ async function saveToServer(){
     const res = await fetch('/api/data', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     if(!res.ok) throw new Error('server returned ' + res.status);
     alert('Saved to server (buses.json).');
+    openBusesTable(); // Show all buses after saving
   }catch(e){
     localStorage.setItem('panimalar_admin_full', JSON.stringify(payload));
     alert('Saved to localStorage (server unavailable).');
+    openBusesTable(); // Show all buses after saving
   }
 }
 async function loadFromServer(){
@@ -737,7 +732,6 @@ function resetAll(){
   tryAutoSave();
 }
 
-/* CHANGED: replaces old seedSample(). Only loads saved buses from server; no fake data */
 async function seedFromServer(){
   try{
     const res = await fetch('/api/data');
@@ -748,24 +742,22 @@ async function seedFromServer(){
     const srvStops = obj?.stops || [];
     const srvOrder = obj?.routeOrder || [];
 
-    // replace current in-memory with server’s saved state
-    buses = srvBuses.map(b => ({ ...b, polyline: null }));
-    drivers = srvDrivers;
-    stops = srvStops;
+    // Merge buses, drivers, stops
+    buses = [...buses, ...srvBuses.filter(sb => !buses.some(b => b.id === sb.id))];
+    drivers = [...drivers, ...srvDrivers.filter(sd => !drivers.some(d => d.id === sd.id))];
+    stops = [...stops, ...srvStops.filter(ss => !stops.some(s => s.id === ss.id))];
+    routeOrder = routeOrder.length ? routeOrder : srvOrder;
 
-    // rebuild markers
     Object.values(stopMarkers).forEach(m => { try{ map.removeLayer(m); }catch(e){} });
     stopMarkers = {};
     stops.forEach(s => { stopMarkers[s.id] = L.marker([s.lat, s.lon]).addTo(map).bindPopup(s.name); });
 
-    // do not overwrite your working order unless you want to:
-    routeOrder = srvOrder;
+    buses.forEach(b => b.polyline = null);
 
     renderAll();
 
-    // Optional: open bus table so user sees what got seeded
     openBusesTable();
-    alert(' loading saved buses only.');
+    alert('Merged saved buses.');
   }catch(err){
     console.error(err);
     alert('Failed to seed from server. Make sure /api/data returns saved data.');
@@ -824,7 +816,7 @@ function escapeHtml(str){ return String(str||'').replace(/&/g,'&amp;').replace(/
 // initial render
 renderAll();
 
-// if you want to auto-load saved data on first open, uncomment:
+// Uncomment to auto-load saved data on first open:
 // loadFromServer();
 
 document.getElementById('selectBusForAssign').addEventListener('change', () => {

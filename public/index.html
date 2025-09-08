@@ -138,9 +138,15 @@
       font-weight: 700;
       border: none;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .start-btn:hover {
+      background: #ffdd45;
+      transform: translateY(-2px);
     }
 
-    /* Dashboard section */
     .dashboard, .contact-section {
       padding: 50px 20px;
       text-align: center;
@@ -150,6 +156,7 @@
       font-size: 2rem;
       margin-bottom: 40px;
       background: linear-gradient(90deg, var(--primary-light), var(--primary-dark));
+      background-clip: text; 
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -176,6 +183,7 @@
     }
     .dashboard-card h3 {
       background: linear-gradient(90deg, var(--primary-light), var(--primary-dark));
+        background-clip: text; 
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       font-weight: 600;
@@ -223,6 +231,84 @@
       .nav-right { gap: 10px; }
       .dashboard-cards { flex-direction: column; align-items: center; }
     }
+
+    /* Chatbot styles */
+    #chatbot {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      font-family: inherit;
+      z-index: 9999;
+    }
+    #chatbot-toggle {
+      background: var(--primary-light);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    #chatbot-window {
+      display: none;
+      width: 300px;
+      height: 400px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      overflow: hidden;
+      flex-direction: column;
+    }
+    #chatbot-header {
+      background: var(--primary-light);
+      color: white;
+      padding: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #chatbot-messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    .bot-message, .user-message {
+      margin: 6px 0;
+      padding: 8px 10px;
+      border-radius: 6px;
+      max-width: 80%;
+    }
+    .bot-message {
+      background: #f0f0f0;
+      text-align: left;
+    }
+    .user-message {
+      background: var(--secondary);
+      color: var(--primary-dark);
+      text-align: right;
+      margin-left: auto;
+    }
+    #chatbot-input-area {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+    #chatbot-input {
+      flex: 1;
+      border: none;
+      padding: 10px;
+      font-size: 14px;
+    }
+    #chatbot-input:focus { outline: none; }
+    #chatbot-send {
+      background: var(--secondary);
+      border: none;
+      padding: 0 15px;
+      cursor: pointer;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -240,7 +326,7 @@
             <li><a href="#contact">Contact</a></li>
           </ul>
         </nav>
-        <a href="login1.html" class="btn-login" role="button">Login</a>
+        <a href="summa_login.html" class="btn-login" role="button">Login</a>
         <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
       </div>
     </div>
@@ -256,7 +342,7 @@
       <h1>Smart Bus Tracking System</h1>
       <h2>Seamless travel. Smarter management. Safer journeys.</h2>
       <p>Stay informed with live bus locations, efficient route planning, and timely updates — all in one intuitive platform designed for students, drivers, and administrators.</p>
-      <button class="start-btn">Get Started</button>
+      <a href="login1.html" class="start-btn">Get Started</a>
     </div>
   </section>
 
@@ -283,9 +369,9 @@
   <section class="contact-section" id="contact" style="background:#f0f4f8;">
     <div class="container">
       <h2>Contact Information</h2>
-      <p>Email: info@panimalar.edu.in</p>
-      <p>Phone: +91 44 1234 5678</p>
-      <p>Support: helpdesk@panimalar.edu.in</p>
+      <p>Email: panimalartracking@gmail.com</p>
+      <p>Phone: 044 -26490404</p>
+      <p>Address: Bangalore Trunk Road, Varadharajapuram, Poonamallee, Chennai – 600 123.</p>
     </div>
   </section>
 
@@ -294,8 +380,27 @@
     <div class="container">&copy; 2025 Panimalar Engineering College. All rights reserved.</div>
   </footer>
 
-  <!-- Mobile Menu Script -->
+  <!-- Chatbot Widget -->
+  <div id="chatbot">
+    <button id="chatbot-toggle">💬 Help</button>
+    <div id="chatbot-window">
+      <div id="chatbot-header">
+        <span>Help Chatbot</span>
+        <button id="chatbot-close">✖</button>
+      </div>
+      <div id="chatbot-messages">
+        <div class="bot-message">👋 Hi! I’m your assistant. Ask me about login, buses, dashboards, or contact.</div>
+      </div>
+      <div id="chatbot-input-area">
+        <input type="text" id="chatbot-input" placeholder="Type a message..." />
+        <button id="chatbot-send">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
   <script>
+    // Mobile Menu
     (function () {
       const toggle = document.getElementById('mobileToggle');
       const navRight = document.getElementById('navRight');
@@ -312,6 +417,63 @@
         }
       });
     })();
+
+    // Chatbot Script
+    const chatbotToggle = document.getElementById("chatbot-toggle");
+    const chatbotWindow = document.getElementById("chatbot-window");
+    const chatbotClose = document.getElementById("chatbot-close");
+    const chatbotSend = document.getElementById("chatbot-send");
+    const chatbotInput = document.getElementById("chatbot-input");
+    const chatbotMessages = document.getElementById("chatbot-messages");
+
+    chatbotToggle.addEventListener("click", () => {
+      chatbotWindow.style.display = "flex";
+      chatbotToggle.style.display = "none";
+    });
+
+    chatbotClose.addEventListener("click", () => {
+      chatbotWindow.style.display = "none";
+      chatbotToggle.style.display = "block";
+    });
+
+    chatbotSend.addEventListener("click", sendMessage);
+    chatbotInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    function sendMessage() {
+      const text = chatbotInput.value.trim();
+      if (!text) return;
+
+      // User message
+      const userMsg = document.createElement("div");
+      userMsg.className = "user-message";
+      userMsg.innerText = text;
+      chatbotMessages.appendChild(userMsg);
+
+      chatbotInput.value = "";
+
+      // Bot reply
+      setTimeout(() => {
+        const botMsg = document.createElement("div");
+        botMsg.className = "bot-message";
+        botMsg.innerText = getBotReply(text);
+        chatbotMessages.appendChild(botMsg);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+      }, 600);
+    }
+
+    function getBotReply(input) {
+      input = input.toLowerCase();
+      if (input.includes("login")) return "👉 Please click the Login button at the top right.";
+      if (input.includes("teacher")) return "👩‍🏫 Teachers can manage attendance and classes in the Teacher Dashboard.";
+      if (input.includes("driver")) return "🚌 Drivers can update bus routes and trips in the Driver Dashboard.";
+      if (input.includes("student")) return "🎓 Students can track bus location and timings in the Student Dashboard.";
+      if (input.includes("bus")) return "🚌 Buses are tracked live in the Driver Dashboard.";
+      if (input.includes("dashboard")) return "📊 We have Teacher, Driver, and Student dashboards for easy access.";
+      if (input.includes("contact")) return "📞 You can reach us at helpdesk@panimalar.edu.in";
+      return "🤖 Sorry, I didn’t get that. Please mail us at helpdesk@panimalar.edu.in for further queries.";
+    }
   </script>
 
 </body>

@@ -1,240 +1,537 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Driver Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <title>Driver Dashboard — Pickup / Drop Routing</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Leaflet & Routing Machine CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
   <style>
     :root{
-      --bg:#0b1020;--panel:#0f172a;--brand:#3b82f6;--ok:#22c55e;--danger:#ef4444;--muted:#94a3b8;
+      --bg: #0b1020;
+      --panel: #0f172a;
+      --muted: #94a3b8;
+      --brand: #3b82f6;
+      --accent: #2563eb;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --card: rgba(10,18,34,0.9);
+      --border: #1f2a44;
+      --text: #e5e7eb;
     }
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(160deg,#0b1020,#0a1025 60%,#0b1020);color:#e5e7eb;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;height:100vh;display:grid;grid-template-columns:320px 1fr}
-    #sidebar{background:rgba(15,23,42,.9);backdrop-filter:blur(8px);border-right:1px solid #1f2a44;padding:18px 16px;display:flex;flex-direction:column;gap:14px}
-    #map{height:100vh;width:100%}
-    h2{margin:8px 0 0;font-size:18px}
-    select, button{width:100%;padding:12px;border-radius:12px;border:1px solid #1f2a44;background:#0b1328;color:#fff}
-    button{cursor:pointer;font-weight:700;border:none}
-    .btn-primary{background:linear-gradient(90deg,#3b82f6,#2563eb)}
-    .btn-danger{background:#ef4444}
-    .chip{display:flex;align-items:center;gap:10px;padding:8px;border-radius:14px;background:#0a1222;border:1px solid #1f2a44;cursor:pointer}
-    .chip img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid #1f2a44}
-    .muted{color:var(--muted);font-size:12px}
-    .section{padding:10px;border-radius:14px;background:#0a1222;border:1px solid #1f2a44}
-    .footer{margin-top:auto;display:grid;gap:8px}
-    .drawer{position:fixed;inset:0;background:rgba(2,6,23,.6);display:none}
-    .panel{position:absolute;left:16px;top:16px;bottom:16px;width:340px;background:#0b1220;border:1px solid #1f2a44;border-radius:16px;padding:16px;overflow:auto}
-    .row{display:grid;gap:10px}
-    label{font-size:12px;color:#cbd5e1}
-    input[type="text"], input[type="tel"], input[type="email"]{width:100%;padding:10px;border-radius:10px;border:1px solid #1f2a44;background:#0a1222;color:#fff}
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; margin:0; font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Arial,sans-serif; color:var(--text); background:linear-gradient(160deg,#08101f,#071026 60%,#08101f); }
+    body{ display: grid; grid-template-columns: 320px 1fr; min-height:100vh; gap:0; }
+    #sidebar{
+      background: var(--card);
+      padding:18px;
+      border-right:1px solid var(--border);
+      display:flex; flex-direction:column; gap:14px;
+      min-height:100vh;
+    }
+    #map { width:100%; height:100vh; position:relative; }
+    .leaflet-container { background:#081225; }
+    h2{ margin:6px 0 0; font-size:18px; }
+    .muted{ color:var(--muted); font-size:12px; }
+    select, button {
+      border-radius:12px; padding:12px; width:100%;
+      border:1px solid var(--border); background:#071429; color:var(--text);
+    }
+    button{ font-weight:700; cursor:pointer; border:none; }
+    .btn-primary{ background: linear-gradient(90deg, var(--brand), var(--accent)); }
+    .btn-danger{ background: var(--danger); }
+    .btn-ghost{ background:#071028; border:1px solid var(--border); color:#cbd5e1; }
+    .chip{ display:flex; gap:10px; align-items:center; padding:8px; background:#071826; border-radius:14px; border:1px solid var(--border); cursor:pointer; }
+    .chip img{ width:36px; height:36px; border-radius:50%; object-fit:cover; border:1px solid var(--border); }
+    .section{ padding:10px; border-radius:12px; background:#071526; border:1px solid var(--border); display:grid; gap:8px; }
+    .footer{ margin-top:auto; display:grid; gap:8px; }
+    .status{ font-size:13px; color:#cbd5e1; }
+    .drawer{ position:fixed; inset:0; background:rgba(2,6,23,0.6); display:none; z-index:8000; }
+    .panel{ position:absolute; left:16px; top:16px; bottom:16px; width:340px; background:#07121c; border:1px solid var(--border); border-radius:12px; padding:16px; overflow:auto; color:var(--text); }
+    #directions {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      bottom: 16px;
+      width: 340px;
+      background: rgba(10,17,28,0.96);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: auto;
+      z-index: 400;
+      display: none;
+      padding: 8px 10px;
+    }
+    #directions .leaflet-routing-container { background: transparent; color:var(--text); }
+    #directions .leaflet-routing-container .leaflet-routing-alt h3,
+    #directions .leaflet-routing-container .leaflet-routing-alt h4 { color:var(--text); }
+    #directions .leaflet-routing-container .leaflet-routing-instructions li { border-bottom: 1px solid rgba(255,255,255,0.03); }
+    #directions .leaflet-routing-container .leaflet-routing-summary { color:var(--muted); }
+    @media (max-width: 920px){
+      body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      #map{ height: calc(100vh - 320px); }
+      #directions { left: 16px; right: 16px; top: unset; bottom: 120px; width: auto; display:none; }
+    }
+    .help { font-size:12px; color:var(--muted); }
   </style>
 </head>
 <body>
-  <div id="sidebar">
-    <!-- Profile chip -->
+  <div id="sidebar" role="navigation" aria-label="Driver controls">
     <div id="profileChip" class="chip" title="Open profile">
-      <img id="chipImg" src="https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1" alt="">
+      <img id="chipImg" src="https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1" alt="profile">
       <div>
         <div id="chipName">Driver</div>
         <div class="muted" id="chipEmail">-</div>
       </div>
     </div>
-
-    <div class="section">
-      <h2>Driver Bus Tracker</h2>
-      <small class="muted">Choose your bus to start sharing location</small>
-      <select id="busSelect"></select>
-      <button id="startSharing" class="btn-primary">Start Sharing Location</button>
-      <button id="stopSharing" class="btn-danger">Stop Sharing Location</button>
+    <div class="section" aria-labelledby="trackerTitle">
+      <h2 id="trackerTitle">Driver Bus Tracker</h2>
+      <div class="muted">Saved buses only (Admin → Save)</div>
+      <label class="muted" for="busSelect">Select saved bus</label>
+      <select id="busSelect" aria-label="Saved buses" disabled>
+        <option>Loading buses…</option>
+      </select>
+      <label class="muted" for="tripMode">Trip Mode</label>
+      <select id="tripMode" aria-label="Trip mode" disabled>
+        <option value="">-- Select Mode --</option>
+        <option value="pickup">Morning To College</option>
+        <option value="drop">Evening To Home</option>
+      </select>
+      <button id="startSharing" class="btn-primary" aria-label="Start trip" disabled>Start Trip (Share Location)</button>
+      <button id="stopSharing" class="btn-danger" aria-label="Stop trip" disabled>Stop Trip</button>
+      <div class="status" id="status">Loading saved buses...</div>
+      <div class="help">Directions panel appears when a route is selected.</div>
     </div>
-
     <div class="footer">
       <button id="logout" class="btn-danger">Logout</button>
     </div>
   </div>
-
-  <div id="map"></div>
-
-  <!-- Profile Drawer -->
-  <div class="drawer" id="drawer">
-    <div class="panel">
-      <h2>My Profile</h2>
-      <p class="muted">Edit your details and photo. Changes broadcast live.</p>
-      <div class="row">
-        <label>Photo</label>
-        <img id="avatar" src="https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:1px solid #1f2a44" />
+  <div id="map" aria-label="Route map" role="application">
+    <div id="directions" aria-hidden="true"></div>
+  </div>
+  <div class="drawer" id="drawer" aria-hidden="true">
+    <div class="panel" role="dialog" aria-labelledby="profileTitle" aria-modal="true">
+      <h2 id="profileTitle">My Profile</h2>
+      <p class="muted">Edit name, phone and photo</p>
+      <div style="display:grid; gap:10px; margin-top:8px;">
+        <label class="muted">Photo</label>
+        <img id="avatar" src="https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:1px solid var(--border)" alt="avatar">
         <input type="file" id="photo" accept="image/*"/>
-      </div>
-      <div class="row" style="margin-top:6px">
-        <label>Full Name</label>
-        <input type="text" id="name"/>
-        <label>Email</label>
+        <label for="name" class="muted">Full name</label>
+        <input type="text" id="name" placeholder="Your full name"/>
+        <label for="email" class="muted">Email</label>
         <input type="email" id="email" disabled/>
-        <label>Phone</label>
+        <label class="muted">Phone</label>
         <input type="tel" id="phone" placeholder="Optional"/>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button id="saveProfile" class="btn-primary">Save Profile</button>
+          <button id="closeDrawer" class="btn-ghost">Close</button>
+        </div>
+        <div id="pStatus" class="muted" style="margin-top:6px"></div>
       </div>
-      <div class="row" style="margin-top:10px">
-        <button id="saveProfile" class="btn-primary">Save Profile</button>
-        <button id="closeDrawer" class="ghost" style="background:#0a1222;border:1px solid #1f2a44;color:#cbd5e1">Close</button>
-      </div>
-      <div class="muted" id="pStatus" style="margin-top:8px"></div>
     </div>
   </div>
-
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // ---------- auth/user ----------
-    const user = JSON.parse(localStorage.getItem('user')||'null');
-    if(!user || user.role!=='driver'){ /* location.href='login.html'; */ }
-
-    // Profile chip display
-    const chipName = document.getElementById('chipName');
-    const chipEmail = document.getElementById('chipEmail');
-    const chipImg = document.getElementById('chipImg');
-    function setChip(u){
-      chipName.textContent = u.name || 'Driver';
-      chipEmail.textContent = u.email || '';
-      chipImg.src = u.profile_photo ? ('/uploads/'+u.profile_photo) : 'https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1';
+    const $ = sel => document.querySelector(sel);
+    const createEl = (tag, props={}, children=[]) => {
+      const el = document.createElement(tag);
+      Object.entries(props).forEach(([k,v]) => el[k]=v);
+      (Array.isArray(children)?children:[children]).forEach(c => {
+        if (!c) return;
+        if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+        else el.appendChild(c);
+      });
+      return el;
+    };
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    const chipName = $('#chipName');
+    const chipEmail = $('#chipEmail');
+    const chipImg  = $('#chipImg');
+    function setChip(u) {
+      chipName.textContent = (u && u.name) || 'Driver';
+      chipEmail.textContent = (u && u.email) || '';
+      chipImg.src = (u && u.profile_photo) ? ('/uploads/' + u.profile_photo)
+                                           : 'https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1';
     }
-    setChip(user);
-
-    // ---------- map ----------
-    const socket = io();
-    const map = L.map('map').setView([13.0827, 80.2707], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-
+    setChip(user || {});
+    let socket = null;
+    try {
+      socket = io();
+    } catch (err) {
+      console.warn('socket.io unavailable', err);
+      socket = { on: ()=>{}, emit: ()=>{}, disconnect: ()=>{}, off: ()=>{}, removeAllListeners: ()=>{} };
+    }
+    const map = L.map('map', { zoomControl: true }).setView([20.5937, 78.9629], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    window.addEventListener('resize', ()=> setTimeout(()=> map.invalidateSize(), 200));
+    setTimeout(()=> map.invalidateSize(), 200);
     let routes = [];
     let routingControl = null;
     let stopMarkers = [];
     let selectedBusId = null;
+    let currentMode = null;
     let locationWatcher = null;
     let liveMarker = null;
-
-    async function loadBuses(){
-      try{
-        const r = await fetch('/buses'); if(!r.ok) throw 0;
-        routes = await r.json();
-      }catch{
-        const r = await fetch('/buses.json'); routes = await r.json();
+    const busSelect     = $('#busSelect');
+    const tripModeSel   = $('#tripMode');
+    const startBtn      = $('#startSharing');
+    const stopBtn       = $('#stopSharing');
+    const statusEl      = $('#status');
+    const directionsEl  = $('#directions');
+    const busIcon = L.icon({
+      iconUrl: "https://cdn-icons-png.flaticon.com/512/61/61231.png",
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+      popupAnchor: [0, -35]
+    });
+    async function loadBuses() {
+      routes = [];
+      busSelect.innerHTML = '<option>Loading buses…</option>';
+      busSelect.disabled = true;
+      tripModeSel.disabled = true;
+      startBtn.disabled = true;
+      stopBtn.disabled = true;
+      statusEl.textContent = 'Loading saved buses...';
+      try {
+        const r = await fetch('/api/data', { cache: 'no-store' });
+        if (r.ok) {
+          const payload = await r.json();
+          routes = buildFromAdminData(payload);
+        }
+      } catch (e) {}
+      if (!routes.length) {
+        try {
+          const r = await fetch('/buses', { cache:'no-store' });
+          if (r.ok) {
+            const list = await r.json();
+            routes = parseGenericBuses(list);
+          }
+        } catch (e) {}
       }
-      const sel = document.getElementById('busSelect');
-      sel.innerHTML = '<option value="">--Select Bus--</option>';
-      routes.forEach(r=>{
-        sel.innerHTML += `<option value="${r.id}">${r.bus_number} - ${r.route_name}</option>`;
+      if (!routes.length) {
+        try {
+          const r = await fetch('/buses.json', { cache:'no-store' });
+          if (r.ok) {
+            const list = await r.json();
+            routes = parseGenericBuses(list);
+          }
+        } catch (e) {}
+      }
+      populateBusSelect();
+    }
+    function buildFromAdminData(payload) {
+      const out = [];
+      if (!payload) return out;
+      const stopsById = {};
+      (payload.stops || []).forEach(s => { stopsById[s.id] = s; });
+      (payload.buses || []).forEach(b => {
+        const sArr = (b.stops || []).map(id => stopsById[id]).filter(Boolean).map(s => ({ lat: s.lat, lon: s.lon, name: s.name }));
+        if (sArr.length > 0) {
+          out.push({
+            id: b.id,
+            label: `${b.routeNo || ''} — ${b.name || 'Bus'}`.replace(/^ — /,''),
+            stops: sArr,
+            raw: b
+          });
+        }
       });
+      return out;
+    }
+    function parseGenericBuses(list) {
+      if (!Array.isArray(list)) return [];
+      return list.map(b => ({
+        id: b.id || b._id || (b.name || Math.random().toString(36).slice(2)),
+        label: `${b.bus_number || b.routeNo || ''} — ${b.route_name || b.name || 'Bus'}`.replace(/^ — /,''),
+        stops: (b.stops || []).map(s => ({ lat: s.latitude || s.lat, lon: s.longitude || s.lon, name: s.stop_name || s.name || (s.label || '') })),
+        raw: b
+      })).filter(b => (b.stops || []).length > 0);
+    }
+    function populateBusSelect() {
+      busSelect.innerHTML = '';
+      if (!routes.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '-- No saved buses (admin not saved yet) --';
+        busSelect.appendChild(opt);
+        busSelect.disabled = true;
+        tripModeSel.disabled = true;
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+        statusEl.textContent = 'No saved buses. Waiting for Admin to save routes.';
+        return;
+      }
+      busSelect.innerHTML = '<option value="">-- Select Saved Bus --</option>';
+      routes.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = r.label;
+        busSelect.appendChild(opt);
+      });
+      busSelect.disabled = false;
+      tripModeSel.disabled = true;
+      startBtn.disabled = true;
+      stopBtn.disabled = true;
+      statusEl.textContent = 'Saved buses loaded. Select a bus and trip mode.';
+      // --- Copilot: Restore saved selections and live sharing ---
+      const storedBusId = localStorage.getItem('driver_selectedBusId');
+      const storedMode = localStorage.getItem('driver_selectedMode');
+      const storedIsSharing = localStorage.getItem('driver_isSharing') === 'true';
+      if (storedBusId) {
+        busSelect.value = storedBusId;
+        selectedBusId = storedBusId;
+        tripModeSel.disabled = false;
+      }
+      if (storedMode) {
+        tripModeSel.value = storedMode;
+        currentMode = storedMode;
+      }
+      if (storedBusId && storedMode) {
+        startBtn.disabled = false;
+        // --- Copilot: Show route after reload ---
+        showBusRoute(selectedBusId, currentMode);
+      }
+      if (storedIsSharing) {
+        startBtn.click();
+      }
     }
     loadBuses();
-
-    document.getElementById('busSelect').addEventListener('change', ()=>{
-      selectedBusId = document.getElementById('busSelect').value;
-      if(selectedBusId){ showBusRoute(selectedBusId); if(liveMarker){ map.removeLayer(liveMarker); liveMarker=null; } }
+    busSelect.addEventListener('change', () => {
+      selectedBusId = busSelect.value || null;
+      clearRoute();
+      tripModeSel.value = '';
+      tripModeSel.disabled = !selectedBusId;
+      startBtn.disabled = true;
+      stopBtn.disabled = true;
+      // --- Copilot: Save bus selection ---
+      localStorage.setItem('driver_selectedBusId', selectedBusId || '');
+      if (selectedBusId) {
+        statusEl.textContent = 'Bus selected. Choose Pickup or Drop to preview route.';
+      } else {
+        statusEl.textContent = 'Select a bus to begin.';
+      }
     });
-
-    function showBusRoute(busId){
-      if(routingControl){ map.removeControl(routingControl); routingControl=null; }
-      stopMarkers.forEach(m=>map.removeLayer(m)); stopMarkers=[];
-      const bus = routes.find(r=> r.id==busId); if(!bus||!bus.stops.length) return;
-
-      bus.stops.forEach(s=>{
-        const m=L.marker([s.latitude,s.longitude]).addTo(map).bindPopup(s.stop_name); stopMarkers.push(m);
+    tripModeSel.addEventListener('change', () => {
+      currentMode = tripModeSel.value || null;
+      clearRoute();
+      // --- Copilot: Save mode selection ---
+      localStorage.setItem('driver_selectedMode', currentMode || '');
+      if (selectedBusId && currentMode) {
+        showBusRoute(selectedBusId, currentMode);
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        statusEl.textContent = `Mode: ${currentMode.toUpperCase()}. Press Start Trip to share location.`;
+      } else {
+        startBtn.disabled = true;
+      }
+    });
+    function clearRoute() {
+      if (routingControl) {
+        try { map.removeControl(routingControl); } catch(e) { console.warn(e); }
+        routingControl = null;
+      }
+      stopMarkers.forEach(m => { try { map.removeLayer(m); } catch(e) {} });
+      stopMarkers = [];
+      directionsEl.innerHTML = '';
+      directionsEl.style.display = 'none';
+      directionsEl.setAttribute('aria-hidden','true');
+    }
+    function showBusRoute(busId, mode) {
+      const bus = routes.find(r => String(r.id) === String(busId));
+      if (!bus || !Array.isArray(bus.stops) || bus.stops.length === 0) {
+        statusEl.textContent = 'Selected bus has no stops.';
+        return;
+      }
+      let stopsToShow = [...bus.stops];
+      if (mode === 'drop') stopsToShow.reverse();
+      stopsToShow.forEach((s, idx) => {
+        const markerHtml = `<div style="
+            display:flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:18px;
+            background:${idx===0 ? 'linear-gradient(90deg,var(--brand),var(--accent))' : '#0b1220'};
+            color:#fff;border:1px solid var(--border);font-weight:700;font-size:12px;">
+              ${idx+1}
+          </div>`;
+        const myIcon = L.divIcon({ html: markerHtml, className: '', iconSize:[36,36], iconAnchor:[18,36] });
+        const m = L.marker([s.lat, s.lon], { icon: myIcon }).addTo(map).bindPopup(`${idx+1}. ${s.name || 'Stop'}`);
+        stopMarkers.push(m);
       });
-      if(bus.stops.length>1){
+      if (stopsToShow.length > 1) {
+        if (routingControl) {
+          try { map.removeControl(routingControl); } catch(e) {}
+          routingControl = null;
+        }
         routingControl = L.Routing.control({
-          waypoints: bus.stops.map(s=>L.latLng(s.latitude,s.longitude)),
-          addWaypoints:false, draggableWaypoints:false, createMarker:()=>null, show:false,
-          lineOptions:{styles:[{color:'dodgerblue',opacity:.85,weight:6}]}
+          waypoints: stopsToShow.map(s => L.latLng(s.lat, s.lon)),
+          addWaypoints: false,
+          draggableWaypoints: false,
+          createMarker: () => null,
+          show: true,
+          routeWhileDragging: false,
+          fitSelectedRoutes: true,
+          lineOptions: { styles: [{ color: '#3b82f6', opacity: .95, weight: 6 }] },
+          container: directionsEl
         }).addTo(map);
-        routingControl.on('routesfound', e=>{ if(e.routes.length) map.fitBounds(e.routes[0].bounds); });
-      }else{
-        map.setView([bus.stops[0].latitude,bus.stops[0].longitude],15);
+        directionsEl.style.display = 'block';
+        directionsEl.setAttribute('aria-hidden','false');
+        routingControl.on('routesfound', e => {
+          if (e.routes && e.routes[0]) {
+            try { map.fitBounds(e.routes[0].bounds, { padding: [60, 360] }); } catch(e) {}
+          }
+        });
+      } else {
+        map.setView([stopsToShow[0].lat, stopsToShow[0].lon], 15);
       }
     }
-
-    // driver live stream
-    socket.on('driverLocationUpdate', data=>{
-      if(String(data.busId)!==String(selectedBusId)) return;
-      const latlng = [data.latitude, data.longitude];
-      if(!liveMarker){
-        liveMarker = L.marker(latlng, {icon:L.icon({iconUrl:'bus.png',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(map).bindPopup('My Live Location');
-      }else liveMarker.setLatLng(latlng);
-    });
-
-    document.getElementById('startSharing').onclick = ()=>{
-      if(!selectedBusId) return alert('Select a bus first');
-      if(navigator.geolocation){
-        locationWatcher = navigator.geolocation.watchPosition(pos=>{
-          socket.emit('driverLocation',{busId:selectedBusId,latitude:pos.coords.latitude,longitude:pos.coords.longitude});
-        }, err=> alert('Error getting location: '+err.message), {enableHighAccuracy:true,maximumAge:0,timeout:10000});
-      }else alert('Geolocation not supported');
-    };
-
-    document.getElementById('stopSharing').onclick = ()=>{
-      if(locationWatcher){ navigator.geolocation.clearWatch(locationWatcher); locationWatcher=null; }
-      if(selectedBusId) socket.emit('stopTrip', selectedBusId);
-      if(liveMarker){ map.removeLayer(liveMarker); liveMarker=null; }
-    };
-
-    // ---------- profile drawer ----------
-    const drawer = document.getElementById('drawer');
-    const pStatus = document.getElementById('pStatus');
-    const nameI = document.getElementById('name');
-    const emailI = document.getElementById('email');
-    const phoneI = document.getElementById('phone');
-    const avatar = document.getElementById('avatar');
-    const photo = document.getElementById('photo');
-
-    function openDrawer(){ drawer.style.display='block'; loadProfile(); }
-    function closeDrawer(){ drawer.style.display='none'; pStatus.textContent=''; }
-    document.getElementById('profileChip').onclick = openDrawer;
-    document.getElementById('closeDrawer').onclick = closeDrawer;
-    drawer.onclick = (e)=>{ if(e.target===drawer) closeDrawer(); };
-
-    async function loadProfile(){
-      try{
-        const r = await fetch(`/profile/${user.id}`);
-        const u = await r.json();
-        nameI.value = u.name||''; emailI.value = u.email||''; phoneI.value = u.phone||'';
-        avatar.src = u.profile_photo ? ('/uploads/'+u.profile_photo) : 'https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1';
-      }catch(e){ pStatus.textContent='Failed to load profile'; }
+    if (socket && socket.on) {
+      socket.on('driverLocationUpdate', data => {
+        if (!selectedBusId || String(data.busId) !== String(selectedBusId)) return;
+        const latlng = [data.latitude, data.longitude];
+        if (!liveMarker) {
+          liveMarker = L.marker(latlng, { icon: busIcon }).addTo(map).bindPopup('My Bus (Live)');
+        } else {
+          liveMarker.setLatLng(latlng);
+        }
+        map.setView(latlng, 15);
+      });
     }
-
-    document.getElementById('saveProfile').onclick = async ()=>{
-      try{
-        pStatus.textContent='Saving...';
-        const fd = new FormData();
-        fd.append('name', nameI.value);
-        if(phoneI.value) fd.append('phone', phoneI.value);
-        if(photo.files[0]) fd.append('photo', photo.files[0]);
-        const r = await fetch(`/profile/${user.id}`, {method:'POST', body:fd});
-        const j = await r.json();
-        if(!r.ok) throw new Error(j.error||'Save failed');
-        // update local + chip
-        localStorage.setItem('user', JSON.stringify(j.user));
-        setChip(j.user);
-        avatar.src = j.user.profile_photo ? ('/uploads/'+j.user.profile_photo) : avatar.src;
-        pStatus.textContent='Saved.';
-      }catch(err){ pStatus.textContent = err.message; }
-    };
-
-    // live profile updates
-    socket.on('profileUpdated', (u)=>{
-      if(String(u.id)!==String(user.id)) return;
-      localStorage.setItem('user', JSON.stringify(u));
-      setChip(u);
-      if(drawer.style.display==='block'){ 
-        nameI.value=u.name||''; 
-        phoneI.value=u.phone||''; 
-        avatar.src=u.profile_photo?('/uploads/'+u.profile_photo):avatar.src; 
+    startBtn.addEventListener('click', () => {
+      if (!selectedBusId) { alert('Please select a saved bus first'); return; }
+      if (!currentMode) { alert('Please select Pickup or Drop'); return; }
+      if (!navigator.geolocation) { alert('Geolocation not supported'); return; }
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      statusEl.textContent = `${currentMode.toUpperCase()} trip started — sharing location (keep this page open).`;
+      // --- Copilot: Save sharing state ---
+      localStorage.setItem('driver_isSharing', 'true');
+      locationWatcher = navigator.geolocation.watchPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        if (!liveMarker) {
+          liveMarker = L.marker([lat, lon], { icon: busIcon }).addTo(map).bindPopup('My Bus (Live)').openPopup();
+        } else {
+          liveMarker.setLatLng([lat, lon]);
+        }
+        map.setView([lat, lon], 15);
+        statusEl.textContent = `Live: ${lat.toFixed(4)}, ${lon.toFixed(4)} — sharing location`;
+        if (socket && socket.emit) {
+          socket.emit('shareLocation', {
+            busId: selectedBusId,
+            lat: lat,
+            lng: lon,
+            mode: currentMode
+          });
+        }
+      }, err => {
+        statusEl.textContent = 'Error acquiring location: ' + (err && err.message ? err.message : 'unknown');
+      }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+    });
+    function stopTrip() {
+      if (locationWatcher) {
+        try { navigator.geolocation.clearWatch(locationWatcher); } catch (e) { }
+        locationWatcher = null;
+      }
+      try {
+        if (selectedBusId && socket && socket.emit) {
+          socket.emit('stopTrip', { busId: selectedBusId, mode: currentMode });
+        }
+      } catch (e) {
+        console.warn('Failed to emit stopTrip:', e);
+      }
+      if (liveMarker) {
+        try { map.removeLayer(liveMarker); } catch (e) { }
+        liveMarker = null;
+      }
+      try { localStorage.removeItem('user'); } catch (e) { }
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      statusEl.textContent = `${(currentMode || 'Trip').toUpperCase()} stopped. Session cleared.`;
+      directionsEl.style.display = 'none';
+      directionsEl.setAttribute('aria-hidden','true');
+      // --- Copilot: Remove sharing state ---
+      localStorage.setItem('driver_isSharing', 'false');
+    }
+    stopBtn.addEventListener('click', stopTrip);
+    window.helper = window.helper || {};
+    window.helper.stopTrip = stopTrip;
+    $('#profileChip').addEventListener('click', () => {
+      $('#drawer').style.display = 'block';
+      $('#drawer').setAttribute('aria-hidden','false');
+      loadProfileToDrawer();
+      setTimeout(()=> map.invalidateSize(), 200);
+    });
+    $('#closeDrawer').addEventListener('click', () => {
+      $('#drawer').style.display = 'none';
+      $('#drawer').setAttribute('aria-hidden','true');
+    });
+    async function loadProfileToDrawer() {
+      if (!user) return;
+      $('#name').value = user.name || '';
+      $('#email').value = user.email || '';
+      $('#phone').value = user.phone || '';
+      $('#avatar').src = user.profile_photo ? ('/uploads/' + user.profile_photo) : 'https://api.iconify.design/mdi:account-circle.svg?color=%23cbd5e1';
+    }
+    $('#saveProfile').addEventListener('click', async () => {
+      $('#pStatus').textContent = 'Saving…';
+      const fd = new FormData();
+      fd.append('name', $('#name').value || '');
+      fd.append('email', $('#email').value || '');
+      fd.append('phone', $('#phone').value || '');
+      if ($('#photo').files[0]) fd.append('photo', $('#photo').files[0]);
+      try {
+        const r = await fetch('/profile/update', { method: 'POST', body: fd });
+        if (r.ok) {
+          const d = await r.json();
+          $('#pStatus').textContent = 'Saved.';
+          localStorage.setItem('user', JSON.stringify(d.user));
+          setChip(d.user);
+          loadProfileToDrawer();
+        } else {
+          $('#pStatus').textContent = 'Error saving profile.';
+        }
+      } catch (e) {
+        $('#pStatus').textContent = 'Error: ' + e.message;
       }
     });
-
-    // logout
-    document.getElementById('logout').onclick = ()=>{
-      localStorage.clear(); location.href='login1.html';
+    $('#logout').addEventListener('click', () => {
+      if (!confirm("Are you sure you want to logout?")) return;
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {}
+      alert("You have been logged out.");
+      window.location.href = "login1.html";
+    });
+    directionsEl.addEventListener('contextmenu', e => e.stopPropagation());
+    window.__driverDashboard = {
+      loadBuses, clearRoute, showBusRoute, getState: ()=>({ selectedBusId, currentMode, routes, locationWatcher, liveMarker })
     };
+    // --- Copilot: Restore state on reload ---
+    window.addEventListener('load', () => {
+      const storedBusId = localStorage.getItem('driver_selectedBusId');
+      const storedMode = localStorage.getItem('driver_selectedMode');
+      const storedIsSharing = localStorage.getItem('driver_isSharing') === 'true';
+      if (storedBusId) {
+        busSelect.value = storedBusId;
+        selectedBusId = storedBusId;
+        tripModeSel.disabled = false;
+      }
+      if (storedMode) {
+        tripModeSel.value = storedMode;
+        currentMode = storedMode;
+      }
+      if (storedBusId && storedMode) {
+        startBtn.disabled = false;
+        // --- Copilot: Show route after reload ---
+        showBusRoute(selectedBusId, currentMode);
+      }
+      if (storedIsSharing) {
+        startBtn.click();
+      }
+    });
   </script>
 </body>
 </html>
