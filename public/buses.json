@@ -1,0 +1,112 @@
+{
+    "buses": [
+        {
+            "id": "bus_vh1bf9k",
+            "name": "Anna nagar",
+            "routeNo": "90",
+            "color": "#b7db46",
+            "driverIds": [
+                "2"
+            ],
+            "stops": [
+                "stop_tafrn97",
+                "stop_261hk26",
+                "stop_8tsvpta",
+                "stop_qydsy4l"
+            ],
+            "boardingName": "1. Zone 8 Anna Nagar, Chennai Corporation, Chennai, Tamil Nadu, India",
+            "endName": "4. Panimalar Engineering College, CSE II Lane, Nazarathpet, Varadarajapuram, Poonamallee, Thiruvallur, Tamil Nadu, 60012",
+            "savedToDatabase": true
+        },
+        {
+            "id": "bus_5dea6m0",
+            "name": "avadi",
+            "routeNo": "45",
+            "color": "#00f8c6",
+            "driverIds": [
+                "4"
+            ],
+            "stops": [
+                "stop_8tsvpta",
+                "stop_qydsy4l"
+            ],
+            "boardingName": "1. Vanagaram, Ambattur, Thiruvallur, Tamil Nadu, 600095, India",
+            "endName": "2. Panimalar Engineering College, CSE II Lane, Nazarathpet, Varadarajapuram, Poonamallee, Thiruvallur, Tamil Nadu, 60012",
+            "savedToDatabase": true
+        },
+        {
+            "id": "bus_rvzrb56",
+            "name": "wavin",
+            "routeNo": "9",
+            "color": "#5361df",
+            "driverIds": [
+                "3"
+            ],
+            "stops": [
+                "stop_tafrn97",
+                "stop_261hk26",
+                "stop_qydsy4l"
+            ],
+            "boardingName": "1. Zone 8 Anna Nagar, Chennai Corporation, Chennai, Tamil Nadu, India",
+            "endName": "3. Panimalar Engineering College, CSE II Lane, Nazarathpet, Varadarajapuram, Poonamallee, Thiruvallur, Tamil Nadu, 60012",
+            "savedToDatabase": true
+        }
+    ],
+    "drivers": [
+        {
+            "id": "2",
+            "name": "aswin"
+        },
+        {
+            "id": "3",
+            "name": "benis"
+        },
+        {
+            "id": "4",
+            "name": "malai"
+        }
+    ],
+    "stops": [
+        {
+            "id": "stop_261hk26",
+            "name": "கோயம்பேடு, EVR Periyar Salai, CMWSSB Division 127, Ward 127, Zone 10 Kodambakkam, Chennai Corporation, Ambattur, Chennai, Tamil Nadu, 600105, India",
+            "lat": 13.0734496,
+            "lon": 80.1948363
+        },
+        {
+            "id": "stop_8tsvpta",
+            "name": "Vanagaram, Ambattur, Thiruvallur, Tamil Nadu, 600095, India",
+            "lat": 13.0604406,
+            "lon": 80.1533447
+        },
+        {
+            "id": "stop_qydsy4l",
+            "name": "Panimalar Engineering College, CSE II Lane, Nazarathpet, Varadarajapuram, Poonamallee, Thiruvallur, Tamil Nadu, 600124, India",
+            "lat": 13.0526157,
+            "lon": 80.0751326
+        },
+        {
+            "id": "stop_tafrn97",
+            "name": "Zone 8 Anna Nagar, Chennai Corporation, Chennai, Tamil Nadu, India",
+            "lat": 13.0872004,
+            "lon": 80.2164421
+        }
+    ],
+    "routeOrder": [],
+    "schedules": [
+        {
+            "id": "schedule_hb9pm7a",
+            "date": "2025-12-30",
+            "routeType": "Morning To College",
+            "timeSlot": "7:00 AM",
+            "routeCategory": "All Routes",
+            "selectedBuses": [
+                "bus_vh1bf9k"
+            ],
+            "busCount": 1,
+            "routeName": "Anna nagar",
+            "routeNumber": "90"
+        }
+    ],
+    "announcements": []
+}

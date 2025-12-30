@@ -257,7 +257,6 @@
     <label style="margin-top:8px">Assign driver(s) to selected bus</label>
     <select id="selectDriversForAssign" multiple></select>
     <div class="controls-compact">
-      <button onclick="testReloadDrivers()">Reload Drivers</button>
       <button onclick="assignDriversToBus()">Assign Driver Name </button>
     </div>
     <label style="margin-top:8px">Draw road route for selected bus</label>
@@ -275,8 +274,34 @@
     <div style="height:1px;background:#113343;margin:12px 0"></div>
     
     <div style="display:flex;justify-content:space-between;align-items:center">
-<button class="btn-mini" onclick="toggleAnnouncementManagement()">Announcement management</button>
+      <h3>Announcement Management</h3>
+      <button class="btn-mini" onclick="toggleAnnouncementManagement()">Manage</button>
     </div>
+    
+    <div id="announcementManagementForm" style="display:none;">
+      <label>Announcement Title</label>
+      <input type="text" id="announcementTitle" placeholder="e.g., Metro Work" />
+      
+      <label style="margin-top:10px">Announcement Message</label>
+      <textarea id="announcementMessage" rows="3" placeholder="Enter announcement details..."></textarea>
+      
+      <label style="margin-top:10px">Active Dates</label>
+      <div class="controls-compact">
+        <input type="date" id="announcementStart" />
+        <input type="date" id="announcementEnd" />
+      </div>
+      
+      <label style="margin-top:10px">Affected Routes (optional)</label>
+      <select id="announcementRoutes" multiple>
+      </select>
+      
+      <div class="controls-compact" style="margin-top:10px">
+        <button onclick="addAnnouncement()">Add Announcement</button>
+        <button class="btn-mini" onclick="clearAnnouncementForm()">Clear</button>
+      </div>
+    </div>
+    
+    <div id="announcementList" style="margin-top:10px; max-height:150px; overflow-y:auto;"></div>
     
     <div style="height:1px;background:#113343;margin:12px 0"></div>
     <div class="muted">All data is permanently saved to MySQL database.</div>
@@ -415,61 +440,6 @@
     </div>
   </div>
 </div>
-
-<!-- Announcement Management modal (central) -->
-<div id="announcementModal" class="modal-overlay" style="display:none; z-index: 10001">
-  <div class="modal" role="dialog" aria-modal="true">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <h3>Announcement Management</h3>
-      <div style="display:flex;gap:10px;justify-content:flex-end;padding-right:20px">
-        <button onclick="saveAnnouncement()" class="small-btn">Save Announcement</button>
-        <button class="btn-mini" onclick="closeAnnouncementModal()">Close</button>
-      </div>
-    </div>
-    <div style="margin-top:8px">
-      <label>Announcement Title</label>
-      <input type="text" id="modalAnnouncementTitle" placeholder="e.g., Metro Work" />
-      
-      <label style="margin-top:10px">Announcement Message</label>
-      <textarea id="modalAnnouncementMessage" rows="3" placeholder="Enter announcement details..."></textarea>
-      
-      <label style="margin-top:10px">Active Dates</label>
-      <div class="controls-compact">
-        <input type="date" id="modalAnnouncementStart" />
-        <input type="date" id="modalAnnouncementEnd" />
-      </div>
-      
-      <label style="margin-top:10px">Priority</label>
-      <select id="modalAnnouncementPriority">
-        <option value="low">Low</option>
-        <option value="medium">Medium</option>
-        <option value="high">High</option>
-      </select>
-      
-      <label style="margin-top:10px">Select Buses</label>
-      <input type="text" id="announcementBusSearchInput" placeholder="Search buses by name or route number..." style="margin-bottom:8px;" onkeyup="filterAnnouncementBusSelection()" />
-      <div id="announcementBusSelectionList" style="height: 120px; overflow-y: auto; border: 1px solid #123a49; border-radius: 6px; padding: 4px; background: #042235;">
-        <div class="small muted" style="padding: 8px; text-align: center;">Search buses above to select</div>
-      </div>
-      <div class="small muted" style="margin-top: 4px;">Click on buses to add/remove them from announcement</div>
-      
-      <div id="announcementSelectedBusesDisplay" style="margin-top: 8px; padding: 8px; background: #042235; border-radius: 6px; border: 1px solid #123a49; min-height: 40px; display: none;">
-        <div style="font-size: 13px; color: #9fc9e6; margin-bottom: 4px;">Selected Buses:</div>
-        <div id="announcementSelectedBusesList" style="font-size: 14px; color: #eaf6ff;"></div>
-      </div>
-      
-      <div class="controls-compact" style="margin-top:8px">
-        <button onclick="addAnnouncement()">Add Announcement</button>
-        <button onclick="clearAnnouncementForm()">Clear Form</button>
-      </div>
-      
-      <label style="margin-top:15px">Current Announcements</label>
-      <div id="modalAnnouncementList" style="max-height:200px; overflow-y:auto; border:1px solid #113343; padding:8px; border-radius:4px; background:#042235;">
-      </div>
-    </div>
-  </div>
-</div>
-
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
 <script>
@@ -512,7 +482,7 @@ map.on('click', (e) => {
       const name = `Boarding - ${b.name}`;
       stops.push({ id, name, lat: e.latlng.lat, lon: e.latlng.lng });
       addMarkerForStop(id);
-      b.boardingName = name; // Store stop name directly
+      b.boardingId = id;
       if (!b.stops.includes(id)) b.stops.unshift(id);
       pendingBoardingModal = null;
       renderAll();
@@ -527,7 +497,7 @@ map.on('click', (e) => {
       const name = `End - ${b.name}`;
       stops.push({ id, name, lat: e.latlng.lat, lon: e.latlng.lng });
       addMarkerForStop(id);
-      b.endName = name; // Store stop name directly
+      b.endId = id;
       if (!b.stops.includes(id)) b.stops.push(id);
       pendingEndModal = null;
       renderAll();
@@ -595,120 +565,6 @@ function renderNewlyAddedBuses(){
 
 // Global variable to track selected buses for schedule
 let selectedBusesForSchedule = [];
-
-// Global variable to track selected buses for announcement
-let selectedBusesForAnnouncement = [];
-
-// Announcement Management bus selection functions
-function populateAnnouncementBusSelectionList(){
-  const busList = document.getElementById('announcementBusSelectionList');
-  if (!busList) return;
-  
-  busList.innerHTML = '';
-  
-  buses.forEach(bus => {
-    const busItem = document.createElement('div');
-    const isSelected = selectedBusesForAnnouncement.includes(bus.id);
-    
-    busItem.style.cssText = `
-      padding: 8px;
-      margin-bottom: 4px;
-      border-radius: 4px;
-      cursor: pointer;
-      background: ${isSelected ? '#1e90ff' : '#042235'};
-      color: ${isSelected ? '#ffffff' : '#eaf6ff'};
-      border: 1px solid ${isSelected ? '#1e90ff' : '#123a49'};
-      font-size: 14px;
-      transition: all 0.2s ease;
-    `;
-    
-    busItem.innerHTML = `
-      <div style="font-weight: 500;">${bus.name}</div>
-      <div style="font-size: 12px; color: ${isSelected ? '#ffffff' : '#9fc9e6'};">Route: ${bus.routeNo || 'No Route'}</div>
-    `;
-    
-    busItem.onclick = () => toggleAnnouncementBusSelection(bus.id);
-    busItem.onmouseover = () => {
-      if (!isSelected) busItem.style.background = '#0a3147';
-    };
-    busItem.onmouseout = () => {
-      if (!isSelected) busItem.style.background = '#042235';
-    };
-    
-    busList.appendChild(busItem);
-  });
-  
-  updateAnnouncementSelectedBusesDisplay();
-}
-
-function filterAnnouncementBusSelection(){
-  const searchTerm = document.getElementById('announcementBusSearchInput').value.toLowerCase();
-  const busList = document.getElementById('announcementBusSelectionList');
-  if (!busList) return;
-  
-  const busItems = busList.children;
-  let hasResults = false;
-  
-  Array.from(busItems).forEach(busItem => {
-    const busName = busItem.querySelector('div').textContent.toLowerCase();
-    const busRoute = busItem.querySelectorAll('div')[1]?.textContent.toLowerCase() || '';
-    
-    if (busName.includes(searchTerm) || busRoute.includes(searchTerm)) {
-      busItem.style.display = 'block';
-      hasResults = true;
-    } else {
-      busItem.style.display = 'none';
-    }
-  });
-  
-  // Show/hide "no results" message
-  if (!hasResults && searchTerm) {
-    if (!busList.querySelector('.no-results')) {
-      const noResults = document.createElement('div');
-      noResults.className = 'no-results';
-      noResults.style.cssText = 'padding: 12px; text-align: center; color: #9fc9e6; font-size: 13px;';
-      noResults.textContent = 'No buses found matching your search';
-      busList.appendChild(noResults);
-    }
-  } else {
-    const noResults = busList.querySelector('.no-results');
-    if (noResults) noResults.remove();
-  }
-}
-
-function toggleAnnouncementBusSelection(busId){
-  const index = selectedBusesForAnnouncement.indexOf(busId);
-  if (index > -1) {
-    selectedBusesForAnnouncement.splice(index, 1);
-  } else {
-    selectedBusesForAnnouncement.push(busId);
-  }
-  populateAnnouncementBusSelectionList();
-}
-
-function updateAnnouncementSelectedBusesDisplay(){
-  const display = document.getElementById('announcementSelectedBusesDisplay');
-  const list = document.getElementById('announcementSelectedBusesList');
-  
-  if (!display || !list) return;
-  
-  if (selectedBusesForAnnouncement.length === 0) {
-    display.style.display = 'none';
-    return;
-  }
-  
-  display.style.display = 'block';
-  const busNames = selectedBusesForAnnouncement.map(busId => {
-    const bus = findBus(busId);
-    return bus ? `${bus.name} (${bus.routeNo || 'No Route'})` : 'Unknown Bus';
-  }).join(', ');
-  
-  list.textContent = busNames;
-}
-
-function getSelectedBusesForAnnouncement(){
-  return selectedBusesForAnnouncement.slice(); // Return a copy
-}
 
 function populateBusSelectionList(){
   const busList = document.getElementById('busSelectionList');
@@ -857,14 +713,7 @@ function renderBuses(){
     `;
     
     summary.innerHTML = summaryContent;
-    li.appendChild(summary);
-    ul.appendChild(li);
-    
-    // Add to dropdown (show all buses, including newly added ones)
-    const opt = document.createElement('option');
-    opt.value = b.id;
-    opt.text = `${b.name} (${b.routeNo || '—'})`;
-    sel.appendChild(opt);
+ 
     
     summary.onclick = function(e) {
       e.stopPropagation();
@@ -928,8 +777,8 @@ function renderBuses(){
       : '—';
     
     // Get boarding and end point names
-    const boardingName = b.boardingName || (b.boardingId ? (findStop(b.boardingId)?.name || '—') : '—');
-    const endName = b.endName || (b.endId ? (findStop(b.endId)?.name || '—') : '—');
+    const boardingName = b.boardingId ? (findStop(b.boardingId)?.name || '—') : '—';
+    const endName = b.endId ? (findStop(b.endId)?.name || '—') : '—';
     
     details.innerHTML = `
       <div style="color:#ffffff;font-weight:500;margin-bottom:8px; font-size:16px;">
@@ -1068,35 +917,14 @@ function renderRouteOrder(){
     ol.appendChild(li);
   });
 }
-function testReloadDrivers() {
-  console.log('Manual driver reload triggered...');
-  loadDriversFromServer();
-}
-
 function renderDriverMultiSelect() {
-  console.log('renderDriverMultiSelect called, drivers array:', drivers);
   const busId = document.getElementById('selectBusForAssign').value;
   const sel = document.getElementById('selectDriversForAssign');
-  
-  if (!sel) {
-    console.error('Driver dropdown not found!');
-    return;
-  }
-  
-  console.log('Clearing dropdown...');
   sel.innerHTML = '';
-  
-  console.log('Adding drivers to dropdown...');
   drivers.forEach(d => {
-    const opt = document.createElement('option'); 
-    opt.value = d.id; 
-    opt.text = d.name;
+    const opt = document.createElement('option'); opt.value = d.id; opt.text = d.name;
     sel.appendChild(opt);
-    console.log('Added option:', d.name);
   });
-  
-  console.log('Dropdown options count:', sel.options.length);
-  
   if(busId){
     const b = findBus(busId);
     if(b && b.driverIds){
@@ -1110,7 +938,7 @@ function addBus(){
   const name = document.getElementById('inputBusName').value.trim();
   const routeNo = document.getElementById('inputRouteNo').value.trim() || prompt('Enter route number (e.g., 12A):') || '';
   if(!name) return alert('Enter bus name');
-  buses.push({ id: uid('bus'), name, routeNo, driverIds:[], stops: [], boardingName: null, endName: null, color: randColor(), polyline: null, savedToDatabase: false });
+  buses.push({ id: uid('bus'), name, routeNo, driverIds:[], stops: [], boardingId: null, endId: null, color: randColor(), polyline: null, savedToDatabase: false });
   document.getElementById('inputBusName').value = '';
   document.getElementById('inputRouteNo').value = '';
   renderAll();
@@ -1133,47 +961,9 @@ function deleteBus(id){
 function addDriver(){
   const name = document.getElementById('inputDriverName').value.trim();
   if(!name) return alert('Enter driver name');
-  
-  // Check if driver already exists in database (users table)
-  fetch('./api/data.php?action=check_driver&name=' + encodeURIComponent(name))
-    .then(response => response.json())
-    .then(data => {
-      if (data.exists) {
-        alert(`Driver "${name}" already exists in the system!`);
-        return;
-      }
-      
-      // Add driver to users table with role 'driver'
-      fetch('./api/data.php?action=add_driver', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: name,
-          role: 'driver'
-        })
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          alert(`Driver "${name}" added successfully!`);
-          // Reload drivers from database
-          loadDriversFromServer();
-          document.getElementById('inputDriverName').value = '';
-        } else {
-          alert(`Failed to add driver: ${result.error}`);
-        }
-      })
-      .catch(error => {
-        console.error('Error adding driver:', error);
-        alert('Failed to add driver. Please try again.');
-      });
-    })
-    .catch(error => {
-      console.error('Error checking driver:', error);
-      alert('Failed to check driver. Please try again.');
-    });
+  drivers.push({ id: uid('drv'), name });
+  document.getElementById('inputDriverName').value = '';
+  renderAll();
 }
 function editDriver(id){
   const d = findDriver(id); if(!d) return;
@@ -1550,8 +1340,8 @@ function openManageStops(busId){
       const opt1 = document.createElement('option'); opt1.value = sid; opt1.text = `${idx+1}. ${s.name}`; boardingSel.appendChild(opt1);
       const opt2 = document.createElement('option'); opt2.value = sid; opt2.text = `${idx+1}. ${s.name}`; endSel.appendChild(opt2);
     });
-    boardingSel.value = bus.boardingName || bus.boardingId || '';
-    endSel.value = bus.endName || bus.endId || '';
+    boardingSel.value = bus.boardingId || '';
+    endSel.value = bus.endId || '';
   }
   renderAssigned();
   document.getElementById('manageModal').style.display = 'flex';
@@ -1562,8 +1352,8 @@ function manDel(busId, idx){ const b=findBus(busId); if(!b) return; b.stops.spli
 function saveManage(){
   if(!currentManageBus) return;
   const boardingSel = document.getElementById('modalBoarding'), endSel = document.getElementById('modalEnd');
-  currentManageBus.boardingName = boardingSel.options[boardingSel.selectedIndex]?.text || null; // Store stop name directly
-  currentManageBus.endName = endSel.options[endSel.selectedIndex]?.text || null; // Store stop name directly
+  currentManageBus.boardingId = boardingSel.value || null;
+  currentManageBus.endId = endSel.value || null;
   document.getElementById('manageModal').style.display = 'none';
   tryAutoSave();
   renderAll();
@@ -1745,8 +1535,8 @@ function showFullBusRoute(busId){
     b.stops.forEach((stopId, index) => {
       const stop = findStop(stopId);
       const stopName = stop ? stop.name : `Unknown Stop (${stopId})`;
-      const isBoarding = (b.boardingName || b.boardingId) === stopId;
-      const isEnd = (b.endName || b.endId) === stopId;
+      const isBoarding = b.boardingId === stopId;
+      const isEnd = b.endId === stopId;
       
       let marker = '';
       if (isBoarding) marker = ' 🚏 [BOARDING]';
@@ -1807,8 +1597,8 @@ function viewBusRoute(busId){
     
     // Update marker popup with route order info
     const orderText = `${index + 1}. ${stop.name}`;
-    const isBoarding = (b.boardingName || b.boardingId) === stop.name;
-    const isEnd = (b.endName || b.endId) === stop.name;
+    const isBoarding = b.boardingId === stop.id;
+    const isEnd = b.endId === stop.id;
     
     let popupText = `<strong style="font-size: 14px;">${orderText}</strong><br>`;
     if(isBoarding) popupText += '<span style="color: #4CAF50; font-weight: bold;">🚌 BOARDING POINT</span><br>';
@@ -1844,8 +1634,8 @@ function viewBusRoute(busId){
   map.fitBounds(coords, { padding: [20, 20] });
   
   // Show route info
-  const boardingName = b.boardingName || (b.boardingId ? (findStop(b.boardingId)?.name || 'Unknown') : 'Not set');
-  const endName = b.endName || (b.endId ? (findStop(b.endId)?.name || 'Unknown') : 'Not set');
+  const boardingName = b.boardingId ? (findStop(b.boardingId)?.name || 'Unknown') : 'Not set';
+  const endName = b.endId ? (findStop(b.endId)?.name || 'Unknown') : 'Not set';
   
   alert(`🚌 Viewing Route: ${b.name} (${b.routeNo || 'No route number'})
 📍 Stops: ${validStops.length}
@@ -1908,8 +1698,8 @@ async function drawRealRoadRoute(stops, bus) {
       const distance = (route.distance / 1000).toFixed(1); // Convert to km
       const duration = Math.round(route.duration / 60); // Convert to minutes
       
-      const boardingName = bus.boardingName || (bus.boardingId ? (findStop(bus.boardingId)?.name || 'Unknown') : 'Not set');
-      const endName = bus.endName || (bus.endId ? (findStop(bus.endId)?.name || 'Unknown') : 'Not set');
+      const boardingName = bus.boardingId ? (findStop(bus.boardingId)?.name || 'Unknown') : 'Not set';
+      const endName = bus.endId ? (findStop(bus.endId)?.name || 'Unknown') : 'Not set';
       
       
     } else {
@@ -2003,22 +1793,6 @@ async function saveToServer(){
     console.error('Save error:', e);
     alert(`⚠️ Failed to save to database. Please try again.\nError: ${e.message}`);
   }
-}
-function loadDriversFromServer() {
-  console.log('Loading drivers from server...');
-  fetch('./api/data.php?action=load')
-    .then(r => r.json())
-    .then(data => {
-      console.log('Server response:', data);
-      if (data.drivers) {
-        drivers = data.drivers;
-        console.log('Drivers loaded from database:', drivers.length, drivers);
-        renderDriverMultiSelect();
-      } else {
-        console.log('No drivers in server response');
-      }
-    })
-    .catch(e => console.error('Failed to load drivers from server:', e));
 }
 async function loadFromServer(){
   // Use the same real-time database function as seedFromServer
@@ -2190,8 +1964,8 @@ function logout(){
   let rows = '';
   busesToShow.forEach((b,i)=>{
     let driverNames = b.driverIds && b.driverIds.length ? b.driverIds.map(id=>(findDriver(id)||{}).name).join(', ') : '';
-    const boarding = b.boardingName || (b.boardingId ? (findStop(b.boardingId)||{}).name : '');
-    const end = b.endName || (b.endId ? (findStop(b.endId)||{}).name : '');
+    const boarding = b.boardingId ? (findStop(b.boardingId)||{}).name : '';
+    const end = b.endId ? (findStop(b.endId)||{}).name : '';
     const stopsText = (b.stops||[]).map(sid => (findStop(sid)||{name:'(missing)'}).name).join(' → ');
     rows += `
       <tr onclick="showBusStopsOnly('${b.id}')" style="cursor:pointer; background-color: #1a3a4a; border: 2px solid #2a5a7a; border-radius:24px; margin-bottom:15px;" onmouseover="this.style.backgroundColor='#2a4a5a'" onmouseout="this.style.backgroundColor='#1a3a4a'">
@@ -2576,33 +2350,10 @@ function loadSchedule() {
     return;
   }
   
-  // Show loading indicator
-  const loadBtn = document.querySelector('button[onclick="loadSchedule()"]');
-  const originalText = loadBtn.textContent;
-  loadBtn.textContent = 'Loading...';
-  loadBtn.disabled = true;
-  
-  // Fetch schedules from database
-  fetch('./api/data.php?action=get_schedules&date=' + encodeURIComponent(date))
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        schedules = data.schedules || [];
-        renderScheduleList(schedules);
-        alert(`Loaded ${schedules.length} schedules for ${date}`);
-      } else {
-        alert('Failed to load schedules: ' + (data.error || 'Unknown error'));
-      }
-    })
-    .catch(error => {
-      console.error('Error loading schedules:', error);
-      alert('Error loading schedules. Please try again.');
-    })
-    .finally(() => {
-      // Restore button
-      loadBtn.textContent = originalText;
-      loadBtn.disabled = false;
-    });
+  // Load schedule for the selected date
+  const daySchedule = schedules.filter(s => s.date === date);
+  renderScheduleList(daySchedule);
+  alert(`Loaded schedule for ${date}`);
 }
 
 function saveSchedule() {
@@ -2667,9 +2418,6 @@ function addTimeSlotSchedule() {
   if (routeCategory.toLowerCase().includes('main')) routeCategoryDb = 'Main Routes';
   else if (routeCategory.toLowerCase().includes('common')) routeCategoryDb = 'Common Routes';
   
-  // Get the first selected bus to extract route info
-  const firstBus = selectedBuses.length > 0 ? findBus(selectedBuses[0]) : null;
-  
   const schedule = {
     id: uid('schedule'),
     date,
@@ -2678,29 +2426,14 @@ function addTimeSlotSchedule() {
     routeCategory: routeCategoryDb,
     selectedBuses,
     busCount: selectedBuses.length,
-    // Add route name and number from the first selected bus
-    routeName: firstBus ? firstBus.name : '',
-    routeNumber: firstBus ? (firstBus.routeNo || '') : ''
+    // Add these fields to match database structure
+    routeName: '',
+    routeNumber: ''   
   };
     
   // Debug log
   console.log('Adding new schedule:', schedule);
-  
-  // Remove any existing schedules with the same date, routeType, and timeSlot
-  schedules = schedules.filter(s => 
-    !(s.date === date && s.routeType === routeType && s.timeSlot === timeSlot)
-  );
-  
-  // Add the new schedule
   schedules.push(schedule);
-  
-  // Sort schedules by time slot
-  schedules.sort((a, b) => {
-    if (a.timeSlot < b.timeSlot) return -1;
-    if (a.timeSlot > b.timeSlot) return 1;
-    return 0;
-  });
-  
   renderScheduleList(schedules.filter(s => s.date === date));
   
   // Clear form
@@ -2768,25 +2501,20 @@ function renderScheduleList(daySchedule) {
     const div = document.createElement('div');
     div.className = 'item';
     
-    // Get bus names for display (used in other parts of the code)
+    // Get bus names for display
+    const busNames = (schedule.selectedBuses || []).map(busId => {
+      const bus = findBus(busId);
+      return bus ? `${bus.name} (${bus.routeNo})` : busId;
+    }).join(', ');
     
     div.innerHTML = `
       <div>
         <div>
-          <strong>${schedule.routeType === 'Morning To College' ? 'Morning to College' : 'Return Routes'}</strong> - ${schedule.timeSlot}
+          <strong>${schedule.routeType === 'morning' ? 'Morning' : 'Return'}</strong> - ${schedule.timeSlot}
           <span class="route-category">${schedule.routeCategory || 'All Routes'}</span>
         </div>
-        <div class="small" style="margin: 4px 0; font-weight: bold;">
-          Buses: ${schedule.selectedBuses ? schedule.selectedBuses.length : 0}
-        </div>
-        <div class="small muted" style="margin-left: 10px;">
-          ${schedule.selectedBuses && schedule.selectedBuses.length > 0 
-            ? schedule.selectedBuses.map(busId => {
-                const bus = findBus(busId);
-                return bus ? `• ${bus.name} (${bus.routeNo || '—'})` : `• Bus ${busId}`;
-              }).join('<br>')
-            : '• No buses assigned'}
-        </div>
+        <div class="small">${schedule.selectedBuses ? schedule.selectedBuses.length : 0} buses</div>
+        <div class="small muted">${busNames}</div>
       </div>
       <div style="display: flex; gap: 5px;">
         <button class="btn-mini" onclick="editSchedule('${schedule.id}')">Edit</button>
@@ -2832,23 +2560,27 @@ function editSchedule(scheduleId) {
 
 // Announcement Management Functions
 function toggleAnnouncementManagement() {
-  document.getElementById('announcementModal').style.display = 'flex';
-  // Populate bus selection list and load existing announcements when opening
-  populateAnnouncementBusSelectionList();
-  renderAnnouncementList();
-}
-
-function closeAnnouncementModal() {
-  document.getElementById('announcementModal').style.display = 'none';
+  const form = document.getElementById('announcementManagementForm');
+  const button = event.target;
+  
+  if (form.style.display === 'none' || form.style.display === '') {
+    form.style.display = 'block';
+    button.textContent = 'Hide';
+    button.style.background = '#1e90ff';
+  } else {
+    form.style.display = 'none';
+    button.textContent = 'Manage';
+    button.style.background = '';
+  }
 }
 
 function addAnnouncement() {
-  const title = document.getElementById('modalAnnouncementTitle').value.trim();
-  const message = document.getElementById('modalAnnouncementMessage').value.trim();
-  const startDate = document.getElementById('modalAnnouncementStart').value;
-  const endDate = document.getElementById('modalAnnouncementEnd').value;
-  const priority = document.getElementById('modalAnnouncementPriority').value;
-  const selectedBuses = getSelectedBusesForAnnouncement();
+  const title = document.getElementById('announcementTitle').value.trim();
+  const message = document.getElementById('announcementMessage').value.trim();
+  const startDate = document.getElementById('announcementStart').value;
+  const endDate = document.getElementById('announcementEnd').value;
+  const selectedRoutes = Array.from(document.getElementById('announcementRoutes').selectedOptions)
+    .map(opt => opt.value);
   
   if (!title) {
     alert('Please enter announcement title');
@@ -2865,52 +2597,34 @@ function addAnnouncement() {
     return;
   }
   
-  if (selectedBuses.length === 0) {
-    alert('Please select at least one bus');
-    return;
-  }
-  
   const announcement = {
-    id: uid('ann'),
+    id: uid('announcement'),
     title,
     message,
     startDate,
     endDate,
-    priority,
-    selectedBuses,
-    busCount: selectedBuses.length,
+    affectedRoutes: selectedRoutes,
     createdAt: new Date().toISOString()
   };
   
-  // Add to announcements array
   announcements.push(announcement);
-  
-  // Clear form
+  renderAnnouncementList();
+  tryAutoSave();
   clearAnnouncementForm();
   
-  // Update display
-  renderAnnouncementList();
-  
-  // Auto-save
-  tryAutoSave();
-  
-  alert('Announcement added successfully!');
+  alert(`Announcement added: ${title}`);
 }
 
 function clearAnnouncementForm() {
-  document.getElementById('modalAnnouncementTitle').value = '';
-  document.getElementById('modalAnnouncementMessage').value = '';
-  document.getElementById('modalAnnouncementStart').value = '';
-  document.getElementById('modalAnnouncementEnd').value = '';
-  document.getElementById('modalAnnouncementPriority').value = 'medium';
-  document.getElementById('announcementBusSearchInput').value = '';
-  // Clear bus selection
-  selectedBusesForAnnouncement = [];
-  populateAnnouncementBusSelectionList();
+  document.getElementById('announcementTitle').value = '';
+  document.getElementById('announcementMessage').value = '';
+  document.getElementById('announcementStart').value = '';
+  document.getElementById('announcementEnd').value = '';
+  document.getElementById('announcementRoutes').selectedIndex = -1;
 }
 
 function renderAnnouncementList() {
-  const list = document.getElementById('modalAnnouncementList');
+  const list = document.getElementById('announcementList');
   list.innerHTML = '';
   
   if (announcements.length === 0) {
@@ -2921,24 +2635,11 @@ function renderAnnouncementList() {
   announcements.forEach(announcement => {
     const div = document.createElement('div');
     div.className = 'item';
-    
-    const priorityColor = announcement.priority === 'high' ? '#ff6b6b' : 
-                         announcement.priority === 'medium' ? '#ffa726' : '#66bb6a';
-    
-    // Get bus names for display
-    const busNames = announcement.selectedBuses.map(busId => {
-      const bus = findBus(busId);
-      return bus ? `${bus.name} (${bus.routeNo || 'No Route'})` : 'Unknown Bus';
-    }).join(', ');
-    
     div.innerHTML = `
       <div>
-        <strong style="color: ${priorityColor}">${announcement.title}</strong>
-        <div class="small">${announcement.message}</div>
-        <div class="small muted">
-          ${announcement.startDate} to ${announcement.endDate} | Priority: ${announcement.priority}
-        </div>
-        <div class="small muted">Buses: ${busNames}</div>
+        <strong>${announcement.title}</strong>
+        <div class="small">${announcement.startDate} to ${announcement.endDate}</div>
+        <div class="small">${announcement.message.substring(0, 50)}...</div>
       </div>
       <button class="btn-mini btn-danger" onclick="removeAnnouncement('${announcement.id}')">Remove</button>
     `;
@@ -2954,9 +2655,17 @@ function removeAnnouncement(announcementId) {
   tryAutoSave();
 }
 
-function saveAnnouncement() {
-  tryAutoSave();
-  alert('Announcements saved successfully!');
+// Initialize announcement routes dropdown
+function initializeAnnouncementRoutes() {
+  const select = document.getElementById('announcementRoutes');
+  select.innerHTML = '<option value="">-- All Routes --</option>';
+  
+  buses.forEach(bus => {
+    const option = document.createElement('option');
+    option.value = bus.id;
+    option.text = `${bus.name} (${bus.routeNo || 'No Route'})`;
+    select.appendChild(option);
+  });
 }
 
 // Save data to localStorage whenever it changes
@@ -3035,15 +2744,10 @@ if (!loadFromLocalStorage()) {
   loadFromServer();
 } else {
   console.log('Successfully loaded bus list from localStorage');
-  // Always load drivers from database to get latest driver data
-  loadDriversFromServer();
 }
 
 // initial render (after data is loaded)
 renderAll();
-
-// Ensure driver dropdown is populated with database drivers
-renderDriverMultiSelect();
 
 document.getElementById('selectBusForAssign').addEventListener('change', () => {
   const v = document.getElementById('selectBusForAssign').value;
@@ -3059,6 +2763,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (scheduleDateInput) {
     scheduleDateInput.value = today;
   }
+  
+  // Initialize announcement routes dropdown
+  initializeAnnouncementRoutes();
   
   // Initialize announcement lists
   renderAnnouncementList();

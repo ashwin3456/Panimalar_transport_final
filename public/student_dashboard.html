@@ -1,349 +1,428 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Panimalar • Student Bus Tracker</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
-<style>
-  html, body {
-    width: 100vw;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
-  }
-  body, html { height: 100%; margin: 0; }
-  #controls { padding: 10px 10px 0 10px; position: relative; }
-  #logoutBtn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: #ef4444;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 8px;
-    cursor: pointer;
-    z-index: 100;
-  }
-  .centered { text-align: center; font-weight: 600; margin: 16px 0 8px 0; font-size: 20px; }
-  .bus-list { margin: 10px 0; padding: 0; list-style: none; }
-  .bus-item {
-    padding: 12px;
-    border-bottom: 1px solid #eee;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s;
-    font-size: 16px;
-    border-radius: 8px;
-  }
-  .bus-item:hover, .bus-item.selected { background: #e0f2fe; }
-  .stop-list { margin: 10px 0; padding: 0; list-style: none; }
-  .stop-item { padding: 8px 0; font-size: 16px; }
-  .search-bar { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 13px; }
-  #mapBox {
-    width: 100%;
-    max-width: 600px;
-    height: 300px;
-    margin: 20px auto 0 auto;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    transition: all 0.3s;
-    cursor: pointer;
-    position: relative;
-    z-index: 10;
-  }
-  #mapBox.fullscreen {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100vw;
-    height: 100vh;
-    margin: 0;
-    border-radius: 0;
-    z-index: 9999;
-    box-shadow: none;
-  }
-  #mapBox.fullscreen #map {
-    width: 100vw;
-    height: 100vh;
-  }
-  #map { width: 100%; height: 100%; }
-  #viewMapBtn {
-    display: block;
-    margin: 16px auto 0 auto;
-    padding: 10px 24px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 16px;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Bus Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6a11cb;
+            --secondary-color: #8e44ad;
+            --accent-color: #9b59b6;
+            --text-color: #333;
+            --light-bg: #f8f9fa;
+            --white: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px 0;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .search-container {
+            display: flex;
+            flex: 1;
+            max-width: 500px;
+            margin: 0 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px 0 0 20px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 0 20px 20px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .time-display {
+            font-size: 14px;
+            text-align: right;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        /* Navigation Buttons */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            flex: 1;
+            background: var(--white);
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-btn i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }
+
+        .nav-btn span {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Date Navigation */
+        .date-nav {
+            display: flex;
+            overflow-x: auto;
+            gap: 10px;
+            padding: 10px 0;
+            margin: 20px 0;
+            scrollbar-width: none; /* Firefox */
+        }
+
+        .date-nav::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        .date-btn {
+            min-width: 80px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: var(--white);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .date-btn.today {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .date-btn .day {
+            font-weight: bold;
+            display: block;
+        }
+
+        .date-btn .date {
+            font-size: 12px;
+        }
+
+        /* Content Area */
+        .content-area {
+            background: var(--white);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: var(--shadow);
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .route-details-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .route-details-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Map Container */
+        #map {
+            width: 100%;
+            height: 400px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .search-container {
+                width: 100%;
+                margin: 10px 0;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+            }
+            
+            .date-nav {
+                padding-bottom: 5px;
+            }
+            
+            .date-btn {
+                min-width: 70px;
+                padding: 8px 5px;
+            }
+        }
+    </style>
 </head>
 <body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">Student Bus Tracker</div>
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Enter route/stop (min 4 letters)">
+                    <button class="search-btn"><i class="fas fa-search"></i></button>
+                </div>
+                <div class="time-display" id="currentTime">Current Time: 3:59:18 PM (Thu, 25 Dec, 2025)</div>
+            </div>
+        </div>
+    </header>
 
-<div id="controls">
-  <button id="logoutBtn">Logout</button>
-  <input id="searchBar" class="search-bar" placeholder="Search bus by name or route..." />
-  <div id="busCount" class="centered"></div>
-  <ul id="busList" class="bus-list"></ul>
-  <div id="stopsSection" style="display:none;">
-    <h4 id="stopsHeading" class="centered"></h4>
-    <ul id="stopList" class="stop-list"></ul>
-    <button id="viewMapBtn" style="display:none;">View on Map</button>
-  </div>
-</div>
+    <div class="container">
+        <div class="nav-buttons">
+            <button class="nav-btn" id="locationMapBtn">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>Location Map</span>
+            </button>
+            <button class="nav-btn" id="busesPositionBtn">
+                <i class="fas fa-bus"></i>
+                <span>Buses Position</span>
+            </button>
+            <button class="nav-btn" id="helplineBtn">
+                <i class="fas fa-phone-alt"></i>
+                <span>Helpline</span>
+            </button>
+        </div>
 
-<div id="mapBox">
-  <button id="closeMapBtn" style="display:none;position:absolute;top:16px;right:16px;z-index:1000;background:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:22px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);">✖</button>
-  <div id="map"></div>
-</div>
+        <div class="date-nav">
+            <button class="date-btn">
+                <span class="day">HOME</span>
+            </button>
+            <button class="date-btn">
+                <span class="day">22nd</span>
+                <span class="date">Mon</span>
+            </button>
+            <button class="date-btn">
+                <span class="day">23rd</span>
+                <span class="date">Tue</span>
+            </button>
+            <button class="date-btn">
+                <span class="day">24th</span>
+                <span class="date">Wed</span>
+            </button>
+            <button class="date-btn today">
+                <span class="day">25th</span>
+                <span class="date">Thu</span>
+            </button>
+            <button class="date-btn">
+                <span class="day">26th</span>
+                <span class="date">Fri</span>
+            </button>
+            <button class="date-btn">
+                <span class="day">27th</span>
+                <span class="date">Sat</span>
+            </button>
+            <button class="date-btn">
+                <span class="day">28th</span>
+                <span class="date">Sun</span>
+            </button>
+            <button class="date-btn">
+                <span class="day">29th</span>
+                <span class="date">Mon</span>
+            </button>
+        </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  const busListEl = document.getElementById('busList');
-  const stopListEl = document.getElementById('stopList');
-  const busCountEl = document.getElementById('busCount');
-  const searchBar = document.getElementById('searchBar');
-  const stopsSection = document.getElementById('stopsSection');
-  const viewMapBtn = document.getElementById('viewMapBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const mapBox = document.getElementById('mapBox');
-  const mapDiv = document.getElementById('map');
-  const closeMapBtn = document.getElementById('closeMapBtn');
+        <div class="content-area">
+            <div style="text-align: center;">
+                <h2 style="color: var(--primary-color); margin-bottom: 10px;">Thu, 25th Dec, 2025</h2>
+                <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; display: inline-block; margin: 10px 0;">
+                    Merry Christmas
+                </div>
+            </div>
+            <button class="route-details-btn">All Route Details - click here</button>
+        </div>
 
-  let routes = [];
-  let selectedBusId = null;
-  let socket = null;
-  let liveMarkers = {};
-  let stopMarkers = [];
-  let routingControl = null;
-  let allStops = [];
-  let isMapFullscreen = false;
+        <div id="map"></div>
+    </div>
 
-  // Initialize map
-  let map = L.map('map', { zoomControl: true }).setView([13.064, 80.248], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-  async function loadBuses() {
-    try {
-      let res = await fetch('/api/data');
-      let data = await res.json();
-      routes = (data.buses || []).map(b => ({
-        id: b.id,
-        label: (b.routeNo ? b.routeNo + ' - ' : '') + (b.name || 'Bus'),
-        stops: b.stops || []
-      }));
-      allStops = data.stops || [];
-      renderBusList();
-    } catch {
-      busListEl.innerHTML = '<li>Error loading buses</li>';
-      busCountEl.textContent = '';
-    }
-  }
-
-  function renderBusList() {
-    let filter = searchBar.value.trim().toLowerCase();
-    let filtered = routes.filter(b => b.label.toLowerCase().includes(filter));
-    busCountEl.textContent = `Total Buses: ${routes.length}`;
-    busListEl.innerHTML = '';
-    filtered.forEach(b => {
-      const li = document.createElement('li');
-      li.className = 'bus-item' + (b.id === selectedBusId ? ' selected' : '');
-      li.textContent = b.label;
-      li.onclick = () => selectBus(b.id);
-      busListEl.appendChild(li);
-    });
-    if (filtered.length === 0) {
-      busListEl.innerHTML = '<li class="bus-item">No buses found.</li>';
-    }
-    stopsSection.style.display = 'none';
-    viewMapBtn.style.display = 'none';
-    clearMap();
-  }
-
-  function selectBus(busId) {
-    selectedBusId = busId;
-    renderBusList();
-    showStopsForBus(busId);
-  }
-
-  function showStopsForBus(busId) {
-    const bus = routes.find(b => b.id === busId);
-    const heading = document.getElementById('stopsHeading');
-    heading.textContent = bus ? bus.label : '';
-
-    if (!bus || !Array.isArray(bus.stops) || bus.stops.length === 0) {
-      stopListEl.innerHTML = '<li>No stops assigned.</li>';
-      stopsSection.style.display = 'block';
-      viewMapBtn.style.display = 'none';
-      return;
-    }
-    let stopsArr = bus.stops.map(id => allStops.find(s => s.id === id)).filter(Boolean);
-    stopListEl.innerHTML = '';
-    stopsArr.forEach((stop) => {
-      const li = document.createElement('li');
-      li.className = 'stop-item';
-      li.textContent = stop.name.split(',')[0].trim(); // <-- Only the first part before comma!
-      stopListEl.appendChild(li);
-    });
-    stopsSection.style.display = 'block';
-    viewMapBtn.style.display = 'block';
-  }
-
-  function clearMap() {
-    stopMarkers.forEach(m => map.removeLayer(m));
-    stopMarkers = [];
-    if (routingControl) {
-      try { map.removeControl(routingControl); } catch(e) {}
-      routingControl = null;
-    }
-    Object.values(liveMarkers).forEach(m => map.removeLayer(m));
-    liveMarkers = {};
-  }
-
-  viewMapBtn.addEventListener('click', () => {
-    if (!selectedBusId) return;
-    clearMap();
-    const bus = routes.find(b => b.id === selectedBusId);
-    if (!bus || !Array.isArray(bus.stops) || bus.stops.length === 0) return;
-    let stopsArr = bus.stops.map(id => allStops.find(s => s.id === id)).filter(Boolean);
-
-    // Draw numbered markers
-    stopsArr.forEach((stop, idx) => {
-      const markerHtml = `
-        <div style="
-          display:flex;align-items:center;justify-content:center;
-          width:28px;height:28px;border-radius:14px;
-          background:${idx===0 ? '#3b82f6' : '#0b1220'};
-          color:#fff;border:2px solid #fff;font-weight:700;font-size:13px;">
-            ${idx+1}
-        </div>`;
-      const myIcon = L.divIcon({ html: markerHtml, className: '', iconSize:[28,28], iconAnchor:[14,28] });
-      const marker = L.marker([stop.lat, stop.lon], { icon: myIcon })
-        .addTo(map)
-        .bindPopup(`${stop.name}`);
-      stopMarkers.push(marker);
-    });
-
-    // Draw route line using Leaflet Routing Machine
-    if (stopsArr.length > 1) {
-      routingControl = L.Routing.control({
-        waypoints: stopsArr.map(s => L.latLng(s.lat, s.lon)),
-        addWaypoints: false,
-        draggableWaypoints: false,
-        createMarker: () => null,
-        show: false,
-        routeWhileDragging: false,
-        fitSelectedRoutes: true,
-        lineOptions: { styles: [{ color: '#3b82f6', opacity: .95, weight: 6 }] }
-      }).addTo(map);
-
-      routingControl.on('routesfound', e => {
-        if (e.routes && e.routes[0]) {
-          try { map.fitBounds(e.routes[0].bounds, { padding: [40, 40] }); } catch(e) {}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Update current time
+        function updateCurrentTime() {
+            const now = new Date();
+            const options = { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true,
+                weekday: 'short',
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            };
+            const timeString = now.toLocaleTimeString('en-US', options);
+            document.getElementById('currentTime').textContent = `Current Time: ${timeString}`;
         }
-      });
-    } else if (stopsArr.length === 1) {
-      map.setView([stopsArr[0].lat, stopsArr[0].lon], 15);
-    }
 
-    // Show live location if available
-    if (!socket) {
-      socket = io();
-      socket.on('locationUpdate', onLocationUpdate);
-    }
-  });
+        // Update time every second
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
 
-  function onLocationUpdate(data) {
-    if (data.busId !== selectedBusId) return;
-    const latlng = [data.lat, data.lng];
-    const bus = routes.find(b => b.id === data.busId);
-    const busNumber = bus && bus.routeNo ? bus.routeNo : (bus ? bus.label.split(' ')[0] : 'Bus');
+        // Initialize map (hidden by default)
+        let map = L.map('map', { zoomControl: true }).setView([13.064, 80.248], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    const iconHtml = `
-      <div style="
-        background: #047857; color: white; font-weight: bold;
-        border-radius: 50%; width: 30px; height: 30px;
-        display: flex; justify-content: center; align-items: center;
-        border: 2px solid white; font-size: 16px; user-select: none;
-      ">${busNumber}</div>`;
+        // Navigation button click handlers
+        document.getElementById('locationMapBtn').addEventListener('click', function() {
+            // Toggle map visibility
+            const mapElement = document.getElementById('map');
+            mapElement.style.display = mapElement.style.display === 'none' ? 'block' : 'none';
+            
+            if (mapElement.style.display === 'block') {
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 300);
+            }
+        });
 
-    const busIcon = L.divIcon({
-      html: iconHtml,
-      className: '',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15]
-    });
+        document.getElementById('busesPositionBtn').addEventListener('click', function() {
+            alert('Buses position feature will be implemented here');
+            // TODO: Implement buses position functionality
+        });
 
-    if (!liveMarkers[data.busId]) {
-      liveMarkers[data.busId] = L.marker(latlng, { icon: busIcon })
-        .addTo(map)
-        .bindPopup(`${busNumber} (Live Location)`);
-    } else {
-      liveMarkers[data.busId].setLatLng(latlng);
-    }
+        document.getElementById('helplineBtn').addEventListener('click', function() {
+            alert('Helpline: 1800-123-4567\nEmail: support@panimalar.edu.in');
+        });
 
-    map.setView(latlng, map.getZoom());
+        // Date navigation
+        const dateButtons = document.querySelectorAll('.date-btn');
+        dateButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove 'today' class from all buttons
+                dateButtons.forEach(btn => btn.classList.remove('today'));
+                // Add 'today' class to clicked button if it's not the HOME button
+                if (!this.textContent.includes('HOME')) {
+                    this.classList.add('today');
+                }
+                // TODO: Update content based on selected date
+            });
+        });
 
-    // Show bus label banner
-    const busLabelBanner = document.getElementById('busLabelBanner');
-    if (bus) {
-      busLabelBanner.textContent = `${bus.label} is here`;
-      busLabelBanner.style.display = 'block';
-    } else {
-      busLabelBanner.style.display = 'none';
-    }
-  }
+        // Route details button
+        document.querySelector('.route-details-btn').addEventListener('click', function() {
+            alert('Route details will be displayed here');
+            // TODO: Implement route details functionality
+        });
 
-  // Map fullscreen logic
-  mapBox.addEventListener('click', (e) => {
-    // Only trigger if not already fullscreen and not clicking the close button
-    if (!isMapFullscreen && e.target !== closeMapBtn) {
-      mapBox.classList.add('fullscreen');
-      closeMapBtn.style.display = 'block';
-      setTimeout(() => { map.invalidateSize(); }, 300);
-      isMapFullscreen = true;
-    }
-  });
-  closeMapBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    mapBox.classList.remove('fullscreen');
-    closeMapBtn.style.display = 'none';
-    setTimeout(() => { map.invalidateSize(); }, 300);
-    isMapFullscreen = false;
-  });
+        // Search functionality
+        const searchInput = document.querySelector('.search-input');
+        const searchBtn = document.querySelector('.search-btn');
+        
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (query.length >= 4) {
+                // TODO: Implement search functionality
+                console.log('Searching for:', query);
+                alert(`Searching for: ${query}`);
+            } else if (query.length > 0) {
+                alert('Please enter at least 4 characters');
+            }
+        }
 
-  // Optional: allow Esc key to close fullscreen
-  document.addEventListener('keydown', (e) => {
-    if (isMapFullscreen && (e.key === 'Escape' || e.key === 'Esc')) {
-      mapBox.classList.remove('fullscreen');
-      closeMapBtn.style.display = 'none';
-      setTimeout(() => { map.invalidateSize(); }, 300);
-      isMapFullscreen = false;
-    }
-  });
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
 
-  searchBar.addEventListener('input', renderBusList);
-
-  loadBuses();
-
-  logoutBtn.addEventListener('click', () => {
-    if (!confirm('Are you sure you want to logout?')) return;
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch (e) {}
-    alert('You have been logged out.');
-    window.location.href = 'login1.html';
-  });
-</script>
+        // Initialize with current date selected
+        const todayBtn = document.querySelector('.date-btn.today');
+        if (todayBtn) {
+            todayBtn.click();
+        }
+    </script>
 
 </body>
 </html>

@@ -535,34 +535,8 @@
     }
 
     .filter-buttons {
-      display: none;
-    }
-
-    .tabs {
       display: flex;
-      gap: 0.25rem;
-    }
-
-    .tab {
-      padding: 0.35rem 0.75rem;
-      font-size: 0.8rem;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-      background: white;
-      color: var(--text);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .tab:hover {
-      background: #f8fafc;
-      border-color: var(--primary);
-    }
-
-    .tab.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
+      gap: 0.5rem;
     }
 
     .btn-sm {
@@ -1255,12 +1229,16 @@
         <span data-translate="profile">Profile</span>
       </a>
       <a class="nav-item active" id="dashboardLink">
+        <i class="fas fa-tachometer-alt"></i>
+        <span data-translate="dashboard">Dashboard</span>
+      </a>
+      <a class="nav-item">
         <i class="fas fa-route"></i>
-        <span data-translate="assignments">Dashboard</span>
+        <span data-translate="assignments">Assignments</span>
       </a>
       <a class="nav-item">
         <i class="fas fa-calendar-alt"></i>
-        <span data-translate="schedule">Assignments</span>
+        <span data-translate="schedule">Schedule</span>
       </a>
     </nav>
     
@@ -1351,6 +1329,9 @@
               <button class="tab active" data-tab="today" data-translate="today">Today</button>
               <button class="tab" data-tab="upcoming" data-translate="upcoming">Upcoming</button>
             </div>
+            <button class="btn btn-outline btn-sm">
+              <i class="fas fa-sync-alt"></i>
+            </button>
           </div>
         </div>
         
@@ -1673,12 +1654,7 @@
           profileSection: null,
           profileLink: null,
           logoutLinks: [],
-          settingsLogoutBtn: null,
-          // Filter elements
-          allButton: null,
-          todayTab: null,
-          upcomingTab: null,
-          currentFilter: 'today' // Default to today
+          settingsLogoutBtn: null
         },
 
         // Load user profile data
@@ -1780,12 +1756,17 @@
                 .then(data => {
                     console.log('Driver schedules API Response:', data);
                     if (data.success) {
-                        // Filter to show only today's schedules by default
-                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-                        const todaySchedules = data.schedules.filter(schedule => schedule.schedule_date === today);
+                        // Use displayDriverSchedules to show the schedules
+                        this.displayDriverSchedules(data.schedules);
                         
-                        // Use displayDriverSchedules to show today's schedules
-                        this.displayDriverSchedules(todaySchedules);
+                        // Show notification if schedules exist
+                        if (data.schedules && data.schedules.length > 0) {
+                            console.log('Found', data.schedules.length, 'schedules for driver');
+                            this.showAssignmentNotification(data.driver_name || 'Driver', data.schedules);
+                        } else {
+                            console.log('No schedules found for driver');
+                            this.showNoAssignmentNotification(data.driver_name || 'Driver');
+                        }
                         
                         // Start real-time updates
                         this.startRealTimeUpdates();
@@ -1945,14 +1926,11 @@
                     const cleanRouteNumber = (schedule.route_number || 'N/A').replace(/\n/g, ' → ');
                     
                     // Build the card HTML
-                    const busName = schedule.bus_name || 'Unknown Bus';
-                    const busRouteNumber = schedule.bus_route_number || 'N/A';
-                    
                     card.innerHTML = `
                         <div class="assignment-header">
                             <div class="route-info">
-                                <h3>${busName} - ${busRouteNumber}</h3>
-                                <p>Route: ${busName}</p>
+                                <h3>${cleanRouteNumber}</h3>
+                                <p>${cleanRouteName}</p>
                             </div>
                             <span class="status-badge status-scheduled">${schedule.route_type || 'Scheduled'}</span>
                         </div>
@@ -2047,52 +2025,6 @@
             document.querySelector('.main-content').prepend(errorDiv);
         },
 
-        // Filter schedules based on selected filter
-        filterSchedules: function(schedules, filter) {
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-            
-            switch(filter) {
-                case 'today':
-                    return schedules.filter(schedule => schedule.schedule_date === today);
-                case 'upcoming':
-                    return schedules.filter(schedule => schedule.schedule_date > today);
-                case 'all':
-                default:
-                    return schedules;
-            }
-        },
-
-        // Update filter button states
-        updateFilterButtons: function(activeFilter) {
-            // Update tab states
-            document.querySelectorAll('.tab').forEach(tab => {
-                if (tab.dataset.tab === activeFilter) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-            
-            // Update all button state
-            const allButton = document.querySelector('[data-translate="all"]');
-            if (activeFilter === 'all') {
-                allButton.classList.add('active');
-            } else {
-                allButton.classList.remove('active');
-            }
-            
-            this.elements.currentFilter = activeFilter;
-        },
-
-        // Handle filter button clicks
-        handleFilterClick: function(filter) {
-            console.log('Filter clicked:', filter);
-            this.updateFilterButtons(filter);
-            
-            // Reload and filter schedules
-            this.loadDriverAssignments();
-        },
-
         // Initialize the application
         init: function() {
           try {
@@ -2178,14 +2110,6 @@
             document.getElementById('dropdownLogoutLink')
           ];
           this.elements.settingsLogoutBtn = document.getElementById('settingsLogoutBtn');
-          
-          // Cache filter elements
-          this.elements.allButton = document.querySelector('[data-translate="all"]');
-          this.elements.todayTab = document.querySelector('[data-tab="today"]');
-          this.elements.upcomingTab = document.querySelector('[data-tab="upcoming"]');
-          
-          // Cache schedule link
-          this.elements.scheduleLink = document.querySelector('.nav-item:nth-child(3)');
         },
 
         // Bind event listeners
@@ -2226,11 +2150,6 @@
             el.profileLink.addEventListener('click', (e) => this.showSection(e, 'profile'));
           }
 
-          // Schedule link - show same assignments as dashboard
-          if (el.scheduleLink && el.assignmentsSection && el.profileSection) {
-            el.scheduleLink.addEventListener('click', (e) => this.showScheduleSection(e));
-          }
-
           // Logout links
           this.elements.logoutLinks.forEach(link => {
             if (link) {
@@ -2259,19 +2178,6 @@
               el.profileSidebar.classList.remove('active');
             }
           });
-
-          // Filter button event handlers
-          if (el.allButton) {
-            el.allButton.addEventListener('click', () => this.handleFilterClick('all'));
-          }
-          
-          if (el.todayTab) {
-            el.todayTab.addEventListener('click', () => this.handleFilterClick('today'));
-          }
-          
-          if (el.upcomingTab) {
-            el.upcomingTab.addEventListener('click', () => this.handleFilterClick('upcoming'));
-          }
         },
 
         // Toggle dropdown
@@ -2312,43 +2218,6 @@
             updatePageLanguage(localStorage.getItem('preferredLanguage') || 'en');
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             el.profileLink.classList.add('active');
-          }
-
-          // Close all dropdowns and sidebars
-          if (el.sidebar) el.sidebar.classList.remove('active');
-          if (el.profileSidebar) el.profileSidebar.classList.remove('active');
-          if (el.profileDropdown) el.profileDropdown.classList.remove('active');
-          if (el.settingsDropdown) el.settingsDropdown.classList.remove('active');
-
-          return false;
-        },
-
-        // Show schedule section (same as assignments - today only)
-        showScheduleSection: function(e) {
-          if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-
-          const el = this.elements;
-          
-          // Show assignments section (same as dashboard)
-          el.profileSection.style.display = 'none';
-          el.assignmentsSection.style.display = 'block';
-          const header = document.querySelector('.main-content .header h1');
-          header.textContent = 'My Schedule';
-          header.setAttribute('data-translate', 'schedule');
-          // Update translation immediately
-          updatePageLanguage(localStorage.getItem('preferredLanguage') || 'en');
-          
-          // Update active states
-          document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-          el.scheduleLink.classList.add('active');
-
-          // Filter to today's assignments
-          const todayTab = document.querySelector('[data-tab="today"]');
-          if (todayTab) {
-            todayTab.click();
           }
 
           // Close all dropdowns and sidebars
@@ -2544,4 +2413,4 @@
     });
   </script>
 </body>
-</html>
+</html>  // driver dashboard
