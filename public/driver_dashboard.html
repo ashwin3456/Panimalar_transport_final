@@ -1133,6 +1133,172 @@
       transform: scale(1.1);
     }
 
+    /* Floating Notification Container */
+    .floating-notification-container {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      width: 350px;
+      max-height: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-20px);
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+
+    .floating-notification-container.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .floating-notification-header {
+      padding: 1rem 1.25rem;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .floating-notification-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .floating-notification-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .floating-notification-close:hover {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.1);
+    }
+
+    .floating-notification-body {
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    .floating-notification-item {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+
+    .floating-notification-item:hover {
+      background: var(--bg-light);
+    }
+
+    .floating-notification-item:last-child {
+      border-bottom: none;
+    }
+
+    .floating-notification-content {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+
+    .floating-notification-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .floating-notification-icon.schedule {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    .unread-indicator {
+      position: absolute;
+      top: 0px;
+      right: -5px;
+      background: #2196f3;
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      line-height: 1;
+    }
+
+    .floating-notification-icon.maintenance {
+      background: #fff3e0;
+      color: #f57c00;
+    }
+
+    .floating-notification-icon.assignment {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+
+    .floating-notification-text {
+      flex: 1;
+    }
+
+    .floating-notification-text p {
+      margin: 0 0 0.25rem 0;
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .floating-notification-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .floating-notification-footer {
+      padding: 0.75rem 1.25rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .floating-notification-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .floating-notification-footer a:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
+
     /* Assignment Card Styles */
     .assignment-card {
       background: white;
@@ -1234,6 +1400,44 @@
     .no-assignments p {
       margin: 0;
       font-size: 0.9rem;
+    }
+
+    /* Schedule Tabs */
+    .schedule-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-left: auto;
+    }
+
+    .schedule-tab {
+      background: transparent;
+      border: 2px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.5rem 1.5rem;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .schedule-tab:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(63, 81, 181, 0.05);
+    }
+
+    .schedule-tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      font-weight: 600;
+    }
+
+    .schedule-tab.active:hover {
+      background: var(--primary-dark);
+      border-color: var(--primary-dark);
     }
   </style>
 </head>
@@ -1345,13 +1549,6 @@
             <i class="fas fa-clipboard-list"></i>
             <span data-translate="assignments"></span>
           </h2>
-          <div class="filter-buttons">
-            <button class="btn btn-primary btn-sm" data-translate="all">All</button>
-            <div class="tabs">
-              <button class="tab active" data-tab="today" data-translate="today">Today</button>
-              <button class="tab" data-tab="upcoming" data-translate="upcoming">Upcoming</button>
-            </div>
-          </div>
         </div>
         
         <div class="assignments-grid">
@@ -1417,7 +1614,7 @@
               <i class="fas fa-bus"></i>
               <div class="detail-text">
                 <h3 data-translate="assignedBus">Assigned Bus</h3>
-                <p id="profileBusNumber">TN 01 AB 1234</p>
+                <p id="profileBusNumber">Loading...</p>
               </div>
             </div>
           </div>
@@ -1441,31 +1638,38 @@
             </div>
           </div>
         </div>
-        
-        <!-- Notifications -->
-        <div class="sidebar-widget">
-          <div class="widget-header">
-            <h3>
-              <i class="fas fa-bell"></i>
-              <h3 data-translate="notifications">Notifications</h3>
-            </h3>
-            <span class="badge">3</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Floating Notification Container -->
+  <div class="floating-notification-container" id="floatingNotificationContainer">
+    <div class="floating-notification-header">
+      <h3>
+        <i class="fas fa-bell"></i>
+        <span data-translate="notifications">Notifications</span>
+      </h3>
+      <button class="floating-notification-close" id="floatingNotificationClose">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="floating-notification-body">
+      <div class="floating-notification-item" id="routeAssignmentNotification" style="cursor: pointer;">
+        <div class="floating-notification-content">
+          <div class="floating-notification-icon schedule">
+            <i class="fas fa-route"></i>
           </div>
-          <div class="widget-body">
-            <div class="notification-item">
-              <p data-translate="newScheduleUpdate">New schedule update for Route 12A</p>
-              <span class="notification-time">2 hours ago</span>
-            </div>
-            <div class="notification-item">
-              <p data-translate="maintenanceScheduledFor">Maintenance scheduled for Bus TN 12 AB 3456</p>
-              <span class="notification-time">1 day ago</span>
-            </div>
-            <a class="view-all" id="viewAllNotifications" data-translate="viewAllNotifications">View all notifications</a>
+          <div class="floating-notification-text">
+            <p id="assignedRouteNotification">You were assigned to Route: Anna Nagar 90</p>
+            <span class="floating-notification-time" id="notificationTimeElement">Just now</span>
           </div>
         </div>
       </div>
     </div>
-  </main>
+    <div class="floating-notification-footer">
+      <a id="viewAllNotificationsLink" data-translate="viewAllNotifications">View all notifications</a>
+    </div>
+  </div>
 
   <!-- Right Sidebar for Profile -->
   <div class="right-sidebar" id="profileSidebar">
@@ -1675,6 +1879,13 @@
           logoutLinks: [],
           settingsLogoutBtn: null,
           // Filter elements
+          filterButtons: null,
+          tabButtons: null,
+          // Notification elements
+          notificationBell: null,
+          floatingNotificationContainer: null,
+          floatingNotificationClose: null,
+          // Filter elements
           allButton: null,
           todayTab: null,
           upcomingTab: null,
@@ -1768,8 +1979,8 @@
         },
 
         // Load driver assignments
-        loadDriverAssignments: function() {
-            console.log('Loading driver assignments...');
+        loadDriverAssignments: function(skipBadgeUpdate = false) {
+            console.log('Loading driver assignments...', skipBadgeUpdate ? '(skip badge update)' : '');
             fetch('./api/data.php?action=get_driver_schedules', {
                 credentials: 'include'
             })
@@ -1780,20 +1991,203 @@
                 .then(data => {
                     console.log('Driver schedules API Response:', data);
                     if (data.success) {
-                        // Filter to show only today's schedules by default
+                        
+                        // Filter schedules based on current filter
+                        const currentFilter = this.currentFilter || 'today';
+                        const filteredSchedules = this.filterSchedules(data.schedules, currentFilter);
+                        
+                        // For notifications, still use today's schedules
                         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
                         const todaySchedules = data.schedules.filter(schedule => schedule.schedule_date === today);
                         
-                        // Use displayDriverSchedules to show today's schedules
-                        this.displayDriverSchedules(todaySchedules);
-                        
-                        // Start real-time updates
-                        this.startRealTimeUpdates();
+                        // Update notification with first assignment if available
+                        if (todaySchedules.length > 0) {
+                            const firstAssignment = todaySchedules[0];
+                            const routeName = firstAssignment.route_name || firstAssignment.bus_name || 'Unknown Route';
+                            const routeNumber = firstAssignment.route_number || firstAssignment.bus_route_number || '';
+                            const assignmentTime = new Date().toISOString();
+                            
+                            // Make sure the floating notification container is visible and updated
+                            const notificationBody = document.querySelector('.floating-notification-body');
+                            const notificationContainer = document.querySelector('.floating-notification-container');
+                            
+                            if (notificationBody && notificationContainer) {
+                                // Ensure container exists but don't show automatically
+                                notificationContainer.style.display = 'block';
+                                // Remove active class so it's hidden by default
+                                notificationContainer.classList.remove('active');
+                                
+                                // Create separate notification items for each schedule
+                                let notificationHTML = '';
+                                todaySchedules.forEach((schedule, index) => {
+                                    const scheduleRouteName = schedule.route_name || schedule.bus_name || 'Unknown Route';
+                                    const scheduleRouteNumber = schedule.route_number || schedule.bus_route_number || '';
+                                    const scheduleId = `scheduleNotification_${index}`;
+                                    
+                                    // Check if this notification has been read before
+                                    const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]');
+                                    const isRead = readNotifications.includes(scheduleId);
+                                    
+                                    notificationHTML += `
+                                        <div class="floating-notification-item" id="${scheduleId}" style="cursor: pointer;">
+                                            <div class="floating-notification-content">
+                                                <div class="floating-notification-icon schedule">
+                                                    <i class="fas fa-route"></i>
+                                                    <span class="unread-indicator" id="unreadIndicator_${index}" style="display: ${isRead ? 'none' : 'flex'};"></span>
+                                                </div>
+                                                <div class="floating-notification-text">
+                                                    <p>Assigned to: ${scheduleRouteName} ${scheduleRouteNumber}</p>
+                                                    <p>${schedule.route_type || 'Schedule'} - ${schedule.time_slot || 'Time slot not set'}</p>
+                                                    <span class="floating-notification-time" data-assignment-time="${assignmentTime}">Just now</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                                
+                                notificationBody.innerHTML = notificationHTML;
+                                
+                                // Initialize time updates
+                                this.startNotificationTimeUpdate();
+                                
+                                // Re-attach click handlers to all notification elements
+                                todaySchedules.forEach((schedule, index) => {
+                                    const scheduleRouteName = schedule.route_name || schedule.bus_name || 'Unknown Route';
+                                    const scheduleNotification = document.getElementById(`scheduleNotification_${index}`);
+                                    if (scheduleNotification) {
+                                        scheduleNotification.addEventListener('click', (e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            // Hide notifications when clicking on an item
+                                            this.hideFloatingNotifications();
+                                            
+                                            console.log('Clicked notification for schedule:', schedule);
+                                            console.log('Schedule ID:', schedule.id);
+                                            console.log('Route name:', scheduleRouteName);
+                                            
+                                            // Decrease notification count
+                                            const notificationBadge = document.querySelector('.notification-badge');
+                                            console.log('Found notification badge:', notificationBadge);
+                                            console.log('Badge HTML:', notificationBadge ? notificationBadge.outerHTML : 'No badge found');
+                                            console.log('Badge textContent:', notificationBadge ? notificationBadge.textContent : 'No text content');
+                                            console.log('Badge innerHTML:', notificationBadge ? notificationBadge.innerHTML : 'No innerHTML');
+                                            
+                                            if (notificationBadge) {
+                                                const currentCount = parseInt(notificationBadge.textContent) || 0;
+                                                const newCount = Math.max(0, currentCount - 1);
+                                                
+                                                console.log(`Attempting to decrease count from ${currentCount} to ${newCount}`);
+                                                console.log('Badge display style before:', notificationBadge.style.display);
+                                                
+                                                if (newCount > 0) {
+                                                    notificationBadge.textContent = newCount > 9 ? '9+' : newCount.toString();
+                                                    notificationBadge.style.display = 'flex'; // Make sure badge is visible
+                                                    // Update localStorage
+                                                    localStorage.setItem('notificationCount', newCount.toString());
+                                                    console.log('Updated badge to:', notificationBadge.textContent);
+                                                    console.log('Badge display style after:', notificationBadge.style.display);
+                                                } else {
+                                                    // Hide badge if count reaches 0
+                                                    notificationBadge.style.display = 'none';
+                                                    localStorage.setItem('notificationCount', '0');
+                                                    console.log('Hiding badge - count reached 0');
+                                                }
+                                            }
+                                            
+                                            // Remove the clicked notification item from the DOM
+                                            scheduleNotification.style.opacity = '0.5';
+                                            scheduleNotification.style.pointerEvents = 'none';
+                                            
+                                            // Show the specific assignment with the full schedule object first
+                                            this.showSpecificAssignment(schedule);
+                                            
+                                            // Remove the unread indicator (blue dot) AFTER showing the assignment
+                                            setTimeout(() => {
+                                                const unreadIndicator = document.getElementById(`unreadIndicator_${index}`);
+                                                console.log('Looking for unread indicator:', `unreadIndicator_${index}`);
+                                                console.log('Found unread indicator:', unreadIndicator);
+                                                if (unreadIndicator) {
+                                                    console.log('Hiding unread indicator after showing assignment');
+                                                    unreadIndicator.style.display = 'none';
+                                                    
+                                                    // Save this notification as read in localStorage
+                                                    const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]');
+                                                    const scheduleId = `scheduleNotification_${index}`;
+                                                    if (!readNotifications.includes(scheduleId)) {
+                                                        readNotifications.push(scheduleId);
+                                                        localStorage.setItem('readNotifications', JSON.stringify(readNotifications));
+                                                        console.log('Saved notification as read:', scheduleId);
+                                                    }
+                                                } else {
+                                                    console.log('Unread indicator not found!');
+                                                }
+                                            }, 100); // Small delay to ensure assignment is shown first
+                                        });
+                                    }
+                                });
+                                
+                                // Update notification badge
+                                const notificationBadge = document.querySelector('.notification-badge');
+                                if (notificationBadge) {
+                                    // Check if we have a saved count from localStorage
+                                    const savedCount = parseInt(localStorage.getItem('notificationCount') || '0');
+                                    const totalCount = todaySchedules.length;
+                                    
+                                    // Use the saved count if it exists, otherwise use total
+                                    const displayCount = (savedCount >= 0) ? savedCount : totalCount;
+                                    
+                                    notificationBadge.style.display = displayCount > 0 ? 'flex' : 'none';
+                                    notificationBadge.textContent = displayCount > 9 ? '9+' : displayCount.toString();
+                                    
+                                    console.log(`Badge set to: ${displayCount} (saved: ${savedCount}, total: ${totalCount})`);
+                                }
+                            }
+                            
+                            // Use displayDriverSchedules to show filtered schedules
+                            this.displayDriverSchedules(filteredSchedules);
+                            
+                            // Start real-time updates
+                            this.startRealTimeUpdates();
+                        } else {
+                            // Show no assignment notification in floating container
+                            const notificationBody = document.querySelector('.floating-notification-body');
+                            if (notificationBody) {
+                                notificationBody.innerHTML = `
+                                    <div class="floating-notification-item">
+                                        <div class="floating-notification-content">
+                                            <div class="floating-notification-icon">
+                                                <i class="fas fa-info-circle"></i>
+                                            </div>
+                                            <div class="floating-notification-text">
+                                                <p>No assignments for today</p>
+                                                <span class="floating-notification-time" id="noAssignmentsTime" data-assignment-time="${new Date().toISOString()}">Just now</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                                // Ensure time updates for this notification
+                                this.startNotificationTimeUpdate();
+                            }
+                            
+                            // Hide notification badge when no assignments
+                            const notificationBadge = document.querySelector('.notification-badge');
+                            if (notificationBadge) {
+                                notificationBadge.style.display = 'none';
+                            }
+                            
+                            // Display empty assignments
+                            this.displayDriverSchedules([]);
+                            
+                            // Start real-time updates (both assignment checking AND time updates)
+                            this.startRealTimeUpdates();
+                            this.startNotificationTimeUpdate();
+                        }
                     } else {
                         console.error('API Error:', data.error);
                         this.showError('Failed to load schedules: ' + (data.error || 'Unknown error'));
                     }
                 })
+          
                 .catch(error => {
                     console.error('Error loading driver schedules:', error);
                     this.showError('Failed to load schedules. Please try again.');
@@ -1981,6 +2375,11 @@
                             </button>
                         </div>`;
                     
+                    // Add unique data attributes for matching
+                    card.setAttribute('data-schedule-id', schedule.id);
+                    card.setAttribute('data-time-slot', schedule.time_slot || '');
+                    card.setAttribute('data-route-type', schedule.route_type || '');
+                    
                     // Add click handlers for the action buttons
                     const startTripBtn = card.querySelector('.btn-primary');
                     const viewRouteBtn = card.querySelector('.btn-outline');
@@ -2058,29 +2457,32 @@
                     return schedules.filter(schedule => schedule.schedule_date > today);
                 case 'all':
                 default:
-                    return schedules;
+                    // Calculate yesterday's date
+                    const yesterdayDate = new Date();
+                    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+                    const yesterday = yesterdayDate.toISOString().split('T')[0];
+                    
+                    // Show today + upcoming + yesterday (exclude older past dates)
+                    return schedules.filter(schedule => 
+                        schedule.schedule_date === today || 
+                        schedule.schedule_date > today || 
+                        schedule.schedule_date === yesterday
+                    );
             }
         },
 
         // Update filter button states
         updateFilterButtons: function(activeFilter) {
-            // Update tab states
-            document.querySelectorAll('.tab').forEach(tab => {
-                if (tab.dataset.tab === activeFilter) {
+            // Update schedule tab states
+            document.querySelectorAll('.schedule-tab').forEach(tab => {
+                if (tab.dataset.filter === activeFilter) {
                     tab.classList.add('active');
                 } else {
                     tab.classList.remove('active');
                 }
             });
             
-            // Update all button state
-            const allButton = document.querySelector('[data-translate="all"]');
-            if (activeFilter === 'all') {
-                allButton.classList.add('active');
-            } else {
-                allButton.classList.remove('active');
-            }
-            
+            // Store current filter
             this.elements.currentFilter = activeFilter;
         },
 
@@ -2088,6 +2490,9 @@
         handleFilterClick: function(filter) {
             console.log('Filter clicked:', filter);
             this.updateFilterButtons(filter);
+            
+            // Store current filter
+            this.currentFilter = filter;
             
             // Reload and filter schedules
             this.loadDriverAssignments();
@@ -2101,6 +2506,8 @@
             this.loadUserProfile();
             this.loadDriverAssignments(); // Load driver assignments (main function)
             this.initializeLanguage();
+            this.startNotificationTimeUpdate(); // Start real-time notification time updates
+            this.initializeNotificationBadge(); // Initialize notification badge
             console.log('Driver Dashboard initialized successfully');
           } catch (error) {
             console.error('Initialization error:', error);
@@ -2179,10 +2586,15 @@
           ];
           this.elements.settingsLogoutBtn = document.getElementById('settingsLogoutBtn');
           
+          // Notification elements
+          this.elements.notificationBell = document.querySelector('.notification-bell');
+          this.elements.floatingNotificationContainer = document.querySelector('.floating-notification-container');
+          this.elements.floatingNotificationClose = document.getElementById('floatingNotificationClose');
+          
           // Cache filter elements
-          this.elements.allButton = document.querySelector('[data-translate="all"]');
-          this.elements.todayTab = document.querySelector('[data-tab="today"]');
-          this.elements.upcomingTab = document.querySelector('[data-tab="upcoming"]');
+          this.elements.allButton = document.querySelector('[data-filter="all"]');
+          this.elements.todayTab = document.querySelector('[data-filter="today"]');
+          this.elements.upcomingTab = document.querySelector('[data-filter="upcoming"]');
           
           // Cache schedule link
           this.elements.scheduleLink = document.querySelector('.nav-item:nth-child(3)');
@@ -2231,16 +2643,18 @@
             el.scheduleLink.addEventListener('click', (e) => this.showScheduleSection(e));
           }
 
-          // Logout links
-          this.elements.logoutLinks.forEach(link => {
-            if (link) {
-              link.addEventListener('click', (e) => this.handleLogout(e));
-            }
-          });
-
           // Settings logout button
           if (this.elements.settingsLogoutBtn) {
             this.elements.settingsLogoutBtn.addEventListener('click', (e) => this.handleLogout(e));
+          }
+
+          // Sidebar and dropdown logout links
+          if (this.elements.logoutLinks && this.elements.logoutLinks.length > 0) {
+            this.elements.logoutLinks.forEach(logoutLink => {
+              if (logoutLink) {
+                logoutLink.addEventListener('click', (e) => this.handleLogout(e));
+              }
+            });
           }
 
           // Close sidebar when clicking outside
@@ -2250,6 +2664,13 @@
                 !e.target.closest('.profile-dropdown-toggle') && 
                 !e.target.closest('.nav-item .fa-user')) {
               el.profileSidebar.classList.remove('active');
+            }
+            
+            // Close settings dropdown when clicking outside
+            if (el.settingsDropdown && 
+                !el.settingsDropdown.contains(e.target) && 
+                !e.target.closest('.settings-toggle')) {
+              el.settingsDropdown.classList.remove('active');
             }
           });
 
@@ -2268,9 +2689,46 @@
           if (el.todayTab) {
             el.todayTab.addEventListener('click', () => this.handleFilterClick('today'));
           }
-          
           if (el.upcomingTab) {
             el.upcomingTab.addEventListener('click', () => this.handleFilterClick('upcoming'));
+          }
+
+          // Notification bell click handler
+          if (el.notificationBell) {
+            el.notificationBell.addEventListener('click', (e) => {
+              e.stopPropagation();
+              console.log('Notification bell clicked!');
+              console.log('Container element:', el.floatingNotificationContainer);
+              
+              // Check if container has content
+              const notificationBody = document.querySelector('.floating-notification-body');
+              console.log('Notification body:', notificationBody);
+              console.log('Notification body content:', notificationBody ? notificationBody.innerHTML : 'No body');
+              
+              this.toggleFloatingNotifications();
+              
+              // Don't hide the badge count here - let individual notification clicks handle it
+              // Only hide badge when user explicitly dismisses all notifications
+            });
+          } else {
+            console.log('Notification bell element not found!');
+          }
+
+          // Floating notification close button
+          if (el.floatingNotificationClose) {
+            el.floatingNotificationClose.addEventListener('click', (e) => {
+              e.stopPropagation();
+              this.hideFloatingNotifications();
+              
+              // Extract the bus/route name from the notification text
+              const notificationText = document.getElementById('assignedRouteNotification').textContent;
+              const routeMatch = notificationText.match(/Route:\s*(.+?)(?:\s|$)/);
+              const assignedRoute = routeMatch ? routeMatch[1].trim() : '';
+              
+              if (assignedRoute) {
+                this.showSpecificAssignment(assignedRoute);
+              }
+            });
           }
         },
 
@@ -2292,9 +2750,21 @@
           if (section === 'assignments') {
             el.profileSection.style.display = 'none';
             el.assignmentsSection.style.display = 'block';
-            const header = document.querySelector('.main-content .header h1');
-            header.textContent = 'My Assignments';
-            header.setAttribute('data-translate', 'assignments');
+            const mainHeader = document.querySelector('.main-content .header h1');
+            mainHeader.textContent = 'My Assignments';
+            mainHeader.setAttribute('data-translate', 'assignments');
+            
+            // Reset section header to remove filter tabs
+            const sectionHeader = document.querySelector('.assignments-section .section-header');
+            if (sectionHeader) {
+              sectionHeader.innerHTML = `
+                <h2 class="section-title">
+                  <i class="fas fa-clipboard-list"></i>
+                  <span data-translate="assignments"></span>
+                </h2>
+              `;
+            }
+            
             // Update translation immediately
             updatePageLanguage(localStorage.getItem('preferredLanguage') || 'en');
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -2305,9 +2775,9 @@
             
             el.assignmentsSection.style.display = 'none';
             el.profileSection.style.display = 'block';
-            const header = document.querySelector('.main-content .header h1');
-            header.textContent = 'My Profile';
-            header.setAttribute('data-translate', 'myProfile');
+            const mainHeader = document.querySelector('.main-content .header h1');
+            mainHeader.textContent = 'My Profile';
+            mainHeader.setAttribute('data-translate', 'myProfile');
             // Update translation immediately
             updatePageLanguage(localStorage.getItem('preferredLanguage') || 'en');
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -2335,9 +2805,43 @@
           // Show assignments section (same as dashboard)
           el.profileSection.style.display = 'none';
           el.assignmentsSection.style.display = 'block';
-          const header = document.querySelector('.main-content .header h1');
-          header.textContent = 'My Schedule';
-          header.setAttribute('data-translate', 'schedule');
+          const mainHeader = document.querySelector('.main-content .header h1');
+          mainHeader.textContent = 'My Schedule';
+          mainHeader.setAttribute('data-translate', 'schedule');
+          
+          // Add filter tabs ONLY for schedule section
+          const sectionHeader = document.querySelector('.assignments-section .section-header');
+          if (sectionHeader) {
+            sectionHeader.innerHTML = `
+              <h2 class="section-title">
+                <i class="fas fa-clipboard-list"></i>
+                <span data-translate="assignments"></span>
+              </h2>
+              <div class="schedule-tabs">
+                <button class="schedule-tab active" data-filter="all" data-translate="all">All</button>
+                <button class="schedule-tab" data-filter="today" data-translate="today">Today</button>
+                <button class="schedule-tab" data-filter="upcoming" data-translate="upcoming">Upcoming</button>
+              </div>
+            `;
+            
+            // Re-attach event listeners to new filter tabs
+            const newFilterTabs = sectionHeader.querySelectorAll('.schedule-tab');
+            newFilterTabs.forEach(tab => {
+              tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Update active state
+                newFilterTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Get filter type and handle
+                const filterType = tab.getAttribute('data-filter');
+                this.handleFilterClick(filterType);
+              });
+            });
+          }
+          
           // Update translation immediately
           updatePageLanguage(localStorage.getItem('preferredLanguage') || 'en');
           
@@ -2346,7 +2850,7 @@
           el.scheduleLink.classList.add('active');
 
           // Filter to today's assignments
-          const todayTab = document.querySelector('[data-tab="today"]');
+          const todayTab = document.querySelector('[data-filter="today"]');
           if (todayTab) {
             todayTab.click();
           }
@@ -2378,32 +2882,788 @@
 
         // View route functionality
         viewRoute: function(schedule) {
-            this.showNotification(`Viewing route details for ${schedule.route_name || 'Route'}`);
+            // Create route map modal
+            const routeMapModal = document.createElement('div');
+            routeMapModal.className = 'route-map-modal';
+            routeMapModal.innerHTML = `
+                <div class="route-map-content">
+                    <div class="route-map-header">
+                        <h3><i class="fas fa-map"></i> Route Map - ${schedule.route_name || 'Route'}</h3>
+                        <button class="close-map-modal" onclick="this.closest('.route-map-modal').remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="route-map-body">
+                        <div class="route-info-bar">
+                            <div class="route-info-item">
+                                <i class="fas fa-bus"></i>
+                                <span>${schedule.bus_name || 'Not assigned'}</span>
+                            </div>
+                            <div class="route-info-item">
+                                <i class="fas fa-clock"></i>
+                                <span>${schedule.time_slot || 'Not specified'}</span>
+                            </div>
+                            <div class="route-info-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>${schedule.schedule_date ? new Date(schedule.schedule_date).toLocaleDateString() : 'Not specified'}</span>
+                            </div>
+                        </div>
+                        <div class="map-container" id="routeMap_${schedule.id || Date.now()}">
+                            <div class="map-placeholder">
+                                <i class="fas fa-map-marked-alt"></i>
+                                <p>Loading route map...</p>
+                            </div>
+                        </div>
+                        <div class="route-stops-list">
+                            <h4><i class="fas fa-map-signs"></i> Route Stops</h4>
+                            <div class="stops-timeline" id="stopsTimeline_${schedule.id || Date.now()}">
+                                <div class="loading-stops">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <p>Loading route stops from database...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add map modal styles
+            const mapStyles = document.createElement('style');
+            mapStyles.textContent = `
+                .route-map-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.7);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                
+                .route-map-content {
+                    background: white;
+                    border-radius: 16px;
+                    max-width: 900px;
+                    width: 95%;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+                    animation: mapSlideIn 0.4s ease-out;
+                }
+                
+                @keyframes mapSlideIn {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.9) translateY(-30px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+                }
+                
+                .route-map-header {
+                    background: linear-gradient(135deg, #2196F3 0%, #4CAF50 100%);
+                    color: white;
+                    padding: 25px;
+                    border-radius: 16px 16px 0 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                
+                .route-map-header h3 {
+                    margin: 0;
+                    font-size: 1.6rem;
+                    font-weight: 600;
+                }
+                
+                .close-map-modal {
+                    background: rgba(255, 255, 255, 0.2);
+                    border: none;
+                    color: white;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s;
+                    font-size: 1.2rem;
+                }
+                
+                .close-map-modal:hover {
+                    background: rgba(255, 255, 255, 0.3);
+                    transform: rotate(90deg);
+                }
+                
+                .route-map-body {
+                    padding: 0;
+                }
+                
+                .route-info-bar {
+                    display: flex;
+                    justify-content: space-around;
+                    padding: 20px;
+                    background: #f8f9fa;
+                    border-bottom: 1px solid #e9ecef;
+                    flex-wrap: wrap;
+                    gap: 15px;
+                }
+                
+                .route-info-bar .route-info-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 10px 15px;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    font-weight: 500;
+                    color: #495057;
+                }
+                
+                .route-info-bar .route-info-item i {
+                    color: #2196F3;
+                }
+                
+                .map-container {
+                    height: 400px;
+                    background: #e3f2fd;
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                .map-placeholder {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100%;
+                    color: #1976D2;
+                }
+                
+                .map-placeholder i {
+                    font-size: 4rem;
+                    margin-bottom: 20px;
+                    animation: pulse 2s infinite;
+                }
+                
+                .loading-stops {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 40px;
+                    color: #6c757d;
+                }
+                
+                .loading-stops i {
+                    font-size: 2rem;
+                    margin-bottom: 15px;
+                    color: #2196F3;
+                }
+                
+                @keyframes pulse {
+                    0%, 100% { opacity: 0.6; }
+                    50% { opacity: 1; }
+                }
+                
+                .route-stops-list {
+                    padding: 30px;
+                    background: white;
+                }
+                
+                .route-stops-list h4 {
+                    color: #495057;
+                    margin-bottom: 25px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    font-size: 1.3rem;
+                    font-weight: 600;
+                }
+                
+                .stops-timeline {
+                    position: relative;
+                    padding-left: 40px;
+                }
+                
+                .stops-timeline::before {
+                    content: '';
+                    position: absolute;
+                    left: 15px;
+                    top: 0;
+                    bottom: 0;
+                    width: 3px;
+                    background: linear-gradient(to bottom, #2196F3, #4CAF50);
+                    border-radius: 2px;
+                }
+                
+                .stop-item {
+                    position: relative;
+                    margin-bottom: 25px;
+                    padding: 20px;
+                    background: #f8f9fa;
+                    border-radius: 12px;
+                    border-left: 4px solid #2196F3;
+                    transition: all 0.3s;
+                }
+                
+                .stop-item:hover {
+                    transform: translateX(5px);
+                    box-shadow: 0 8px 25px rgba(33, 150, 243, 0.2);
+                }
+                
+                .stop-item::before {
+                    content: '';
+                    position: absolute;
+                    left: -32px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 16px;
+                    height: 16px;
+                    background: #2196F3;
+                    border: 3px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 0 0 3px #e3f2fd;
+                }
+                
+                .stop-item:last-child::before {
+                    background: #4CAF50;
+                    box-shadow: 0 0 0 3px #e8f5e8;
+                }
+                
+                .stop-item-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                }
+                
+                .stop-name {
+                    font-weight: 600;
+                    color: #212529;
+                    font-size: 1.1rem;
+                }
+                
+                .stop-time {
+                    background: #2196F3;
+                    color: white;
+                    padding: 5px 12px;
+                    border-radius: 20px;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                }
+                
+                .stop-address {
+                    color: #6c757d;
+                    margin-top: 5px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                
+                .stop-address i {
+                    color: #2196F3;
+                    font-size: 0.9rem;
+                }
+            `;
+            document.head.appendChild(mapStyles);
+            
+            // Add modal to page and show it
+            document.body.appendChild(routeMapModal);
+            
+            // Fetch real route data from database
+            this.fetchRouteDataFromDatabase(schedule.id || schedule.route_id, schedule, routeMapModal);
+            
+            // Close modal when clicking outside
+            routeMapModal.addEventListener('click', (e) => {
+                if (e.target === routeMapModal) {
+                    routeMapModal.remove();
+                }
+            });
+            
+            // Close modal with Escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape' && document.body.contains(routeMapModal)) {
+                    routeMapModal.remove();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
         },
 
-        // Handle logout
+        // Fetch route data from database
+        fetchRouteDataFromDatabase: function(routeId, schedule, modalElement) {
+            // API endpoint to get route stops from database
+            const apiUrl = `./api/data.php?action=get_route_stops&route_id=${routeId}&bus_id=${schedule.bus_id}`;
+            
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Route data from database:', data);
+                    
+                    if (data.success && data.stops && data.stops.length > 0) {
+                        // Update map with real route data
+                        this.updateMapWithRealData(data.stops, schedule, modalElement);
+                    } else {
+                        // Fallback to default data if no database data
+                        console.log('No route data found, using fallback');
+                        this.updateMapWithDefaultData(schedule, modalElement);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching route data:', error);
+                    // Fallback to default data on error
+                    this.updateMapWithDefaultData(schedule, modalElement);
+                });
+        },
+
+        // Update map with real database data
+        updateMapWithRealData: function(stops, schedule, modalElement) {
+            const mapContainer = modalElement.querySelector('.map-container');
+            const stopsTimeline = modalElement.querySelector('.stops-timeline');
+            
+            // Update map with real route path
+            if (mapContainer) {
+                mapContainer.innerHTML = `
+                    <div class="interactive-map">
+                        <div class="map-canvas" style="height: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); position: relative;">
+                            <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                                <path d="M 50 350 Q 200 200 350 150 T 650 100" 
+                                      stroke="#2196F3" 
+                                      stroke-width="4" 
+                                      fill="none"
+                                      stroke-dasharray="10,5"
+                                      style="animation: dash 20s linear infinite;">
+                                </path>
+                                ${stops.map((stop, index) => `
+                                    <circle cx="${50 + index * 150}" cy="${350 - index * 50}" r="8" fill="${index === stops.length - 1 ? '#4CAF50' : '#2196F3'}" />
+                                `).join('')}
+                            </svg>
+                            <div style="position: absolute; top: 20px; left: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                                <h4 style="margin: 0 0 10px 0; color: #1976D2;">${schedule.route_name || 'Route'}</h4>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">Total Stops: ${stops.length}</p>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">Est. Time: ${schedule.time_slot || '45 mins'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add animation style
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes dash {
+                        to {
+                            stroke-dashoffset: -100;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // Update stops timeline with real data
+            if (stopsTimeline) {
+                stopsTimeline.innerHTML = stops.map((stop, index) => `
+                    <div class="stop-item">
+                        <div class="stop-item-header">
+                            <div class="stop-name">${stop.stop_name || 'Stop ' + (index + 1)}</div>
+                            <div class="stop-time">${stop.arrival_time || 'N/A'}</div>
+                        </div>
+                        <div class="stop-address">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>${stop.address || stop.location || 'Address not available'}</span>
+                        </div>
+                        ${stop.distance ? `<div style="margin-top: 8px; color: #6c757d; font-size: 0.85rem;">
+                            <i class="fas fa-road"></i> Distance: ${stop.distance} km
+                        </div>` : ''}
+                    </div>
+                `).join('');
+            }
+        },
+
+        // Update map with default fallback data
+        updateMapWithDefaultData: function(schedule, modalElement) {
+            const mapContainer = modalElement.querySelector('.map-container');
+            const stopsTimeline = modalElement.querySelector('.stops-timeline');
+            
+            // Default fallback stops
+            const defaultStops = [
+                { stop_name: 'Main Bus Stand', address: 'City Center, Downtown', arrival_time: schedule.time_slot || '08:00 AM', distance: '0' },
+                { stop_name: 'Central Station', address: 'Railway Station Road', arrival_time: '08:15 AM', distance: '3.5' },
+                { stop_name: 'Market Square', address: 'Main Market Area', arrival_time: '08:30 AM', distance: '7.2' },
+                { stop_name: 'University Gate', address: 'University Campus', arrival_time: '08:45 AM', distance: '11.8' },
+                { stop_name: schedule.route_name || 'Final Destination', address: 'End Point', arrival_time: '09:00 AM', distance: '15.0' }
+            ];
+            
+            // Update map
+            if (mapContainer) {
+                mapContainer.innerHTML = `
+                    <div class="interactive-map">
+                        <div class="map-canvas" style="height: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); position: relative;">
+                            <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                                <path d="M 50 350 Q 200 200 350 150 T 650 100" 
+                                      stroke="#2196F3" 
+                                      stroke-width="4" 
+                                      fill="none"
+                                      stroke-dasharray="10,5"
+                                      style="animation: dash 20s linear infinite;">
+                                </path>
+                                <circle cx="50" cy="350" r="8" fill="#2196F3" />
+                                <circle cx="200" cy="200" r="8" fill="#2196F3" />
+                                <circle cx="350" cy="150" r="8" fill="#2196F3" />
+                                <circle cx="500" cy="120" r="8" fill="#2196F3" />
+                                <circle cx="650" cy="100" r="8" fill="#4CAF50" />
+                            </svg>
+                            <div style="position: absolute; top: 20px; left: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                                <h4 style="margin: 0 0 10px 0; color: #1976D2;">${schedule.route_name || 'Route'}</h4>
+                                <p style="margin: 0; color: #666; font-size: 0.9rem;">Total Distance: ~15 km</p>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">Est. Time: ${schedule.time_slot || '45 mins'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes dash {
+                        to {
+                            stroke-dashoffset: -100;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // Update stops with default data
+            if (stopsTimeline) {
+                stopsTimeline.innerHTML = defaultStops.map((stop, index) => `
+                    <div class="stop-item">
+                        <div class="stop-item-header">
+                            <div class="stop-name">${stop.stop_name}</div>
+                            <div class="stop-time">${stop.arrival_time}</div>
+                        </div>
+                        <div class="stop-address">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>${stop.address}</span>
+                        </div>
+                        <div style="margin-top: 8px; color: #6c757d; font-size: 0.85rem;">
+                            <i class="fas fa-road"></i> Distance: ${stop.distance} km
+                        </div>
+                    </div>
+                `).join('');
+            }
+        },
+
+        // Hide floating notifications
+        hideFloatingNotifications: function() {
+          const container = this.elements.floatingNotificationContainer || document.querySelector('.floating-notification-container');
+          if (container) {
+            container.classList.remove('active');
+          }
+        },
+
+        // Update notifications with assigned route data
+        updateNotificationsWithRouteData: function(routeName, routeNumber, assignmentTime) {
+          const assignedRouteNotification = document.getElementById('assignedRouteNotification');
+          const notificationTime = document.getElementById('notificationTimeElement');
+          const busReadyNotification = document.getElementById('busReadyNotification');
+          
+          if (assignedRouteNotification && routeName && routeNumber) {
+            assignedRouteNotification.textContent = `You were assigned to Route: ${routeName} ${routeNumber}`;
+          }
+          
+          // Update the time display based on actual assignment time
+          if (notificationTime) {
+            // Store the assignment time as a data attribute
+            if (assignmentTime) {
+              notificationTime.dataset.assignmentTime = assignmentTime;
+            } else if (!notificationTime.dataset.assignmentTime) {
+              // If no assignment time provided and none stored, use current time
+              notificationTime.dataset.assignmentTime = new Date().toISOString();
+            }
+            
+            const timeAgo = this.getTimeAgo(notificationTime.dataset.assignmentTime);
+            notificationTime.textContent = timeAgo;
+          }
+          
+          if (busReadyNotification && routeName && routeNumber) {
+            busReadyNotification.textContent = `Your bus for ${routeName} ${routeNumber} is ready for departure`;
+          }
+        },
+
+        // Calculate time ago from assignment time
+        getTimeAgo: function(assignmentTime) {
+          const now = new Date();
+          const assignedTime = new Date(assignmentTime);
+          const diffInMs = now - assignedTime;
+          const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+          const diffInHours = Math.floor(diffInMinutes / 60);
+          const diffInDays = Math.floor(diffInHours / 24);
+          
+          if (diffInMinutes < 1) {
+            return 'Just now';
+          } else if (diffInMinutes < 60) {
+            return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+          } else if (diffInHours < 24) {
+            return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+          } else {
+            return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+          }
+        },
+
+        // Update notification time in real-time
+        startNotificationTimeUpdate: function() {
+          // Initialize notification time on page load
+          this.updateNotificationsWithRouteData('Anna Nagar', '90', new Date().toISOString());
+          
+          setInterval(() => {
+            // Update all notification time elements
+            document.querySelectorAll('.floating-notification-time[data-assignment-time]').forEach(notificationTime => {
+              if (notificationTime.dataset.assignmentTime) {
+                const timeAgo = this.getTimeAgo(notificationTime.dataset.assignmentTime);
+                notificationTime.textContent = timeAgo;
+              }
+            });
+            
+            // Also update the main notification time element if it exists
+            const mainNotificationTime = document.getElementById('notificationTimeElement');
+            if (mainNotificationTime && mainNotificationTime.dataset.assignmentTime) {
+              const timeAgo = this.getTimeAgo(mainNotificationTime.dataset.assignmentTime);
+              mainNotificationTime.textContent = timeAgo;
+            }
+          }, 60000); // Update every minute
+        },
+
+        // Update notification badge count
+        updateNotificationBadge: function(count) {
+          const badge = document.getElementById('notificationBadge');
+          if (badge) {
+            if (count > 0) {
+              badge.textContent = count;
+              badge.style.display = 'flex';
+            } else {
+              badge.style.display = 'none';
+            }
+          }
+        },
+
+        // Add notification and update badge
+        addNotification: function(message, type = 'info') {
+          // Update notification count
+          const currentCount = parseInt(localStorage.getItem('notificationCount') || '0');
+          const newCount = currentCount + 1;
+          localStorage.setItem('notificationCount', newCount.toString());
+          this.updateNotificationBadge(newCount);
+          
+          // Show notification
+          this.showNotification(message);
+        },
+
+        // Clear notifications and reset badge
+        clearNotifications: function() {
+          localStorage.setItem('notificationCount', '0');
+          this.updateNotificationBadge(0);
+          
+          // Clear floating notification content
+          const notificationBody = document.querySelector('.floating-notification-body');
+          if (notificationBody) {
+            notificationBody.innerHTML = `
+              <div class="no-notifications">
+                <i class="fas fa-bell-slash"></i>
+                <p>No notifications</p>
+              </div>
+            `;
+          }
+        },
+
+        // Initialize notification badge on page load
+        initializeNotificationBadge: function() {
+          const savedCount = parseInt(localStorage.getItem('notificationCount') || '0');
+          this.updateNotificationBadge(savedCount);
+        },
+
+        // Handle logout functionality
         handleLogout: function(e) {
           if (e) {
             e.preventDefault();
             e.stopPropagation();
           }
 
+          // Clear any stored session data
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Show confirmation message
           if (confirm('Are you sure you want to logout?')) {
-            try {
-              // Clear any stored data
-              if (localStorage) {
-                localStorage.removeItem('loggedIn');
-                localStorage.removeItem('role');
-                localStorage.removeItem('driverId');
-              }
-              // Redirect to login
-              window.location.href = 'login1.html';
-            } catch (error) {
-              console.error('Logout error:', error);
-              window.location.href = 'login1.html';
-            }
+            // Redirect to login page
+            window.location.href = 'login1.html';
           }
-          return false;
+        },
+
+        // Show specific assignment details
+        showSpecificAssignment: function(scheduleOrRouteName) {
+          // Switch to assignments section
+          this.showSection(null, 'assignments');
+          
+          // Ensure assignments are loaded first, but skip badge update to preserve count
+          this.loadDriverAssignments(true);
+          
+          // Wait a moment for assignments to load, then highlight
+          setTimeout(() => {
+            // Find and highlight the existing assignment that matches the route name
+            const assignmentsGrid = document.querySelector('.assignments-grid');
+            if (assignmentsGrid) {
+              const assignmentCards = assignmentsGrid.querySelectorAll('.assignment-card');
+              let targetAssignment = null;
+              
+              // Check if we received a schedule object or just a route name
+              let routeName;
+              let busName;
+              let scheduleId;
+              let timeSlot;
+              let routeType;
+              if (typeof scheduleOrRouteName === 'object' && scheduleOrRouteName !== null) {
+                // It's a schedule object - get all matching fields
+                routeName = scheduleOrRouteName.route_name || 'Unknown Route';
+                busName = scheduleOrRouteName.bus_name || 'Unknown Bus';
+                scheduleId = scheduleOrRouteName.id;
+                timeSlot = scheduleOrRouteName.time_slot || '';
+                routeType = scheduleOrRouteName.route_type || '';
+                console.log(`Searching for schedule ID: ${scheduleId}, Route: ${routeName}, Bus: ${busName}, Time: ${timeSlot}, Type: ${routeType}`);
+              } else {
+                // It's just a route name string
+                routeName = scheduleOrRouteName;
+                busName = scheduleOrRouteName;
+                console.log(`Searching for route/bus: ${routeName}`);
+              }
+              
+              console.log(`Found ${assignmentCards.length} assignment cards`);
+              
+              // Search for assignment containing the route name or bus name
+              assignmentCards.forEach((card, index) => {
+                const routeTitle = card.querySelector('h3');
+                const routeParagraph = card.querySelector('.route-info p');
+                const cardScheduleId = card.getAttribute('data-schedule-id');
+                const cardTimeSlot = card.getAttribute('data-time-slot');
+                const cardRouteType = card.getAttribute('data-route-type');
+                
+                console.log(`Card ${index}:`, {
+                  title: routeTitle ? routeTitle.textContent : 'No title',
+                  paragraph: routeParagraph ? routeParagraph.textContent : 'No paragraph',
+                  scheduleId: cardScheduleId,
+                  timeSlot: cardTimeSlot,
+                  routeType: cardRouteType
+                });
+                
+                // First try to match by exact schedule ID if available
+                if (scheduleId && cardScheduleId === scheduleId.toString()) {
+                  targetAssignment = card;
+                  console.log(`Found exact match by schedule ID: ${scheduleId}`);
+                }
+                
+                // If no exact ID match, try to match by unique combination of time slot + route type
+                if (!targetAssignment && timeSlot && cardTimeSlot && routeType && cardRouteType) {
+                  if (cardTimeSlot === timeSlot && cardRouteType === routeType) {
+                    targetAssignment = card;
+                    console.log(`Found match by time slot and route type: ${timeSlot} - ${routeType}`);
+                  }
+                }
+                
+                // If still no match, fall back to title/paragraph matching
+                if (!targetAssignment && routeTitle) {
+                  const titleText = routeTitle.textContent.toLowerCase();
+                  if ((routeName && titleText.includes(routeName.toLowerCase())) || 
+                      (busName && titleText.includes(busName.toLowerCase()))) {
+                    targetAssignment = card;
+                    console.log(`Found matching assignment by title:`, routeTitle.textContent);
+                  }
+                }
+                
+                // Also check paragraph content if title doesn't match
+                if (!targetAssignment && routeParagraph) {
+                  const paragraphText = routeParagraph.textContent.toLowerCase();
+                  if ((routeName && paragraphText.includes(routeName.toLowerCase())) || 
+                      (busName && paragraphText.includes(busName.toLowerCase()))) {
+                    targetAssignment = card;
+                    console.log(`Found matching assignment by paragraph:`, routeParagraph.textContent);
+                  }
+                }
+              });
+              
+              if (targetAssignment) {
+                console.log('Highlighting target assignment');
+                // Highlight the found assignment
+                targetAssignment.style.cssText = `
+                  border: 2px solid var(--primary);
+                  background: linear-gradient(135deg, rgba(63, 81, 181, 0.1), rgba(63, 81, 181, 0.05));
+                  animation: pulse 2s infinite;
+                  transform: scale(1.02);
+                  box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3);
+                `;
+                
+                // Add a priority badge
+                const header = targetAssignment.querySelector('.assignment-header');
+                if (header) {
+                  const existingBadge = header.querySelector('.priority-badge');
+                  if (!existingBadge) {
+                    const priorityBadge = document.createElement('span');
+                    priorityBadge.className = 'priority-badge';
+                    priorityBadge.style.cssText = `
+                      background: #ff9800;
+                      color: white;
+                      padding: 2px 8px;
+                      border-radius: 12px;
+                      font-size: 11px;
+                      font-weight: bold;
+                      margin-left: 8px;
+                    `;
+                    priorityBadge.textContent = 'SELECTED';
+                    header.appendChild(priorityBadge);
+                  }
+                }
+                
+                // Scroll to the highlighted assignment
+                targetAssignment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Remove highlight after 5 seconds
+                setTimeout(() => {
+                  targetAssignment.style.border = '';
+                  targetAssignment.style.background = '';
+                  targetAssignment.style.animation = '';
+                  targetAssignment.style.transform = '';
+                  targetAssignment.style.boxShadow = '';
+                  
+                  // Remove the badge
+                  const badge = header.querySelector('.priority-badge');
+                  if (badge) {
+                    badge.remove();
+                  }
+                }, 5000);
+              } else {
+                // If no matching assignment found, show a message and check what's available
+                console.log(`No assignment found for route: ${routeName}, bus: ${busName}, time: ${timeSlot}, type: ${routeType}`);
+                console.log('Available assignments:');
+                assignmentCards.forEach((card, index) => {
+                  const routeTitle = card.querySelector('h3');
+                  const routeNumber = card.querySelector('.route-number');
+                  const cardScheduleId = card.getAttribute('data-schedule-id');
+                  const cardTimeSlot = card.getAttribute('data-time-slot');
+                  console.log(`  ${index}: ID=${cardScheduleId}, Time=${cardTimeSlot}, Title: ${routeTitle ? routeTitle.textContent : 'No title'} - ${routeNumber ? routeNumber.textContent : 'No number'}`);
+                });
+                
+                this.showNotification(`Assignment for ${routeName || busName} not found. Check console for available assignments.`);
+              }
+            } else {
+              console.log('Assignments grid not found or empty');
+              this.showNotification('No assignments loaded. Please try again.');
+            }
+          }, 500); // Wait 500ms for assignments to load
         }
       };
 
@@ -2420,7 +3680,6 @@
           help: "Help",
           language: "Language",
           currentTrip: "Current Trip",
-          upcomingTrips: "Upcoming Trips",
           recentActivity: "Recent Activity",
           viewAll: "View All",
           noUpcomingTrips: "No upcoming trips scheduled",
@@ -2541,6 +3800,22 @@
       if (typeof window.DriverDashboard.init === 'function') {
         window.DriverDashboard.init();
       }
+
+      // Prevent # from appearing in URL for all anchor tags without href
+      document.addEventListener('DOMContentLoaded', function() {
+        // Get all anchor tags
+        const allAnchors = document.querySelectorAll('a');
+        
+        allAnchors.forEach(anchor => {
+          // If anchor doesn't have href or has empty href
+          if (!anchor.hasAttribute('href') || anchor.getAttribute('href') === '' || anchor.getAttribute('href') === '#') {
+            anchor.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+            });
+          }
+        });
+      });
     });
   </script>
 </body>

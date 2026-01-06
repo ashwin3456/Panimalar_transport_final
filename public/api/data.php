@@ -3,10 +3,8 @@
 // Persists and serves admin-managed data (buses, drivers, stops, routeOrder)
 // Frontend calls: GET /api/data, POST /api/data
 
-// Ensure session is started with same settings as login
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Load config first (which handles session start)
+require_once '../config.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -36,7 +34,6 @@ if ($method === 'GET') {
     }
     
     try {
-      require_once '../config.php';
       $stmt = $conn->prepare("SELECT id FROM users WHERE name = ? AND role = 'Driver' LIMIT 1");
       $stmt->bind_param('s', $driverName);
       $stmt->execute();
@@ -65,7 +62,6 @@ if ($method === 'GET') {
     $userId = $_SESSION['user_id'];
     
     try {
-      require_once '../config.php';
       
       // Get user details
       $stmt = $conn->prepare("SELECT id, name, email, phone_number, role FROM users WHERE id = ?");
@@ -126,7 +122,6 @@ if ($method === 'GET') {
     $date = $_GET['date'] ?? '';
     
     try {
-      require_once '../config.php';
       
       $query = "
         SELECT 
@@ -212,7 +207,6 @@ if ($method === 'GET') {
     }
     
     try {
-      require_once '../config.php';
       
       // Get logged-in driver's information
       $userId = $_SESSION['user_id'];
@@ -293,7 +287,6 @@ if ($method === 'GET') {
     }
     
     try {
-      require_once '../config.php';
       
       // Get logged-in driver's name from users table
       $userId = $_SESSION['user_id'];
@@ -466,6 +459,7 @@ if ($method === 'GET') {
     // Check if boarding_stop_name and end_stop_name columns exist
     $hasBoardingName = false;
     $hasEndName = false;
+    $hasStops = false;
     try {
       $res = $conn->query("SHOW COLUMNS FROM buses LIKE 'boarding_stop_name'");
       $hasBoardingName = ($res && $res->num_rows > 0);
@@ -480,10 +474,18 @@ if ($method === 'GET') {
       error_log("Error checking end_stop_name column: " . $e->getMessage());
     }
     
+    try {
+      $res = $conn->query("SHOW COLUMNS FROM buses LIKE 'stops'");
+      $hasStops = ($res && $res->num_rows > 0);
+    } catch (Exception $e) {
+      error_log("Error checking stops column: " . $e->getMessage());
+    }
+    
     // Build SELECT query based on available columns
     $selectFields = "id, name, route_no";
     if ($hasBoardingName) $selectFields .= ", boarding_stop_name";
     if ($hasEndName) $selectFields .= ", end_stop_name";
+    if ($hasStops) $selectFields .= ", stops";
     
     $busResult = $conn->query("SELECT $selectFields FROM buses ORDER BY id");
     
@@ -493,17 +495,37 @@ if ($method === 'GET') {
         
         // Get stops for this bus
         $stopIds = [];
-        $routeResult = $conn->query("
-          SELECT s.id, s.name, s.lat, s.lon, bs.position 
-          FROM bus_stops bs 
-          JOIN stops s ON bs.stop_id = s.id 
-          WHERE bs.bus_id = '$busId' 
-          ORDER BY bs.position
-        ");
+        $stopNames = [];
         
-        if ($routeResult && $routeResult->num_rows > 0) {
-          while ($stopRow = $routeResult->fetch_assoc()) {
-            $stopIds[] = $stopRow['id'];
+        // If stops column exists and has data, use it
+        if ($hasStops && !empty($busRow['stops'])) {
+          $stopIds = json_decode($busRow['stops'], true) ?: [];
+          
+          // Get stop names from IDs
+          if (!empty($stopIds)) {
+            $idsString = "'" . implode("','", array_map([$conn, 'real_escape_string'], $stopIds)) . "'";
+            $stopResult = $conn->query("SELECT id, name FROM stops WHERE id IN ($idsString)");
+            if ($stopResult && $stopResult->num_rows > 0) {
+              while ($stopRow = $stopResult->fetch_assoc()) {
+                $stopNames[] = $stopRow['name'];
+              }
+            }
+          }
+        } else {
+          // Fallback to bus_stops table - get stop names directly
+          $routeResult = $conn->query("
+            SELECT s.id, s.name, s.lat, s.lon, bs.position 
+            FROM bus_stops bs 
+            JOIN stops s ON bs.stop_id = s.id 
+            WHERE bs.bus_id = '$busId' 
+            ORDER BY bs.position
+          ");
+          
+          if ($routeResult && $routeResult->num_rows > 0) {
+            while ($stopRow = $routeResult->fetch_assoc()) {
+              $stopIds[] = $stopRow['id'];
+              $stopNames[] = $stopRow['name'];
+            }
           }
         }
         
@@ -528,7 +550,8 @@ if ($method === 'GET') {
           'boardingName' => $hasBoardingName ? $busRow['boarding_stop_name'] : null,
           'endName' => $hasEndName ? $busRow['end_stop_name'] : null,
           'driverIds' => $driverIds,
-          'stops' => $stopIds
+          'stops' => $stopIds,
+          'stopNames' => $stopNames
         ];
       }
     }
@@ -656,7 +679,6 @@ if ($method === 'POST') {
     }
     
     try {
-      require_once '../config.php';
       
       // Check if name already exists
       $stmt = $conn->prepare("SELECT id FROM users WHERE name = ? LIMIT 1");
@@ -725,7 +747,7 @@ if ($method === 'POST') {
       throw new Exception("Database connection failed: " . $conn->connect_error);
     }
 
-    $hasBusExternal = false; $hasStopExternal = false; $hasBoardingId = false; $hasEndId = false;
+    $hasBusExternal = false; $hasStopExternal = false; $hasBoardingId = false; $hasEndId = false; $hasStops = false;
     // Detect optional columns
     try {
       $res = $conn->query("SHOW COLUMNS FROM buses LIKE 'external_id'");
@@ -753,6 +775,13 @@ if ($method === 'POST') {
       $hasEndName = ($res4 && $res4->num_rows > 0);
     } catch (Exception $e) {
       error_log("Error checking buses end_stop_name column: " . $e->getMessage());
+    }
+    
+    try {
+      $res5 = $conn->query("SHOW COLUMNS FROM buses LIKE 'stops'");
+      $hasStops = ($res5 && $res5->num_rows > 0);
+    } catch (Exception $e) {
+      error_log("Error checking buses stops column: " . $e->getMessage());
     }
 
     $stops = $decoded['stops'] ?? [];
@@ -874,6 +903,13 @@ if ($method === 'POST') {
           $updateValues[] = $endName;
         }
         
+        if ($hasStops) {
+          $updateFields .= ", stops=?";
+          $updateParams .= "s";
+          $stopsJson = json_encode($stopIds);
+          $updateValues[] = $stopsJson;
+        }
+        
         $updateFields .= " WHERE id=?";
         $updateParams .= "s";
         $updateValues[] = $adminId;
@@ -907,6 +943,14 @@ if ($method === 'POST') {
           $insertFields .= ", end_stop_name";
           $insertParams .= "s";
           $insertValues[] = $endName;
+          $insertPlaceholders .= ",?";
+        }
+        
+        if ($hasStops) {
+          $insertFields .= ", stops";
+          $insertParams .= "s";
+          $stopsJson = json_encode($stopIds);
+          $insertValues[] = $stopsJson;
           $insertPlaceholders .= ",?";
         }
         
