@@ -352,6 +352,66 @@
         // Initialize map (hidden by default)
         let map = L.map('map', { zoomControl: true }).setView([13.064, 80.248], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        // Store bus routes data
+        const busRoutes = {
+            '25th': {
+                name: 'Anna Nagar Route',
+                stops: [
+                    { name: 'Panimalar College', lat: 13.064, lng: 80.248 },
+                    { name: 'Poonamallee', lat: 13.035, lng: 80.108 },
+                    { name: 'Anna Nagar', lat: 13.093, lng: 80.213 },
+                    { name: 'Koyambedu', lat: 13.071, lng: 80.201 },
+                    { name: 'Vadapalani', lat: 13.052, lng: 80.211 }
+                ]
+            },
+            // Add more dates and routes as needed
+            '26th': {
+                name: 'Tambaram Route',
+                stops: [
+                    { name: 'Panimalar College', lat: 13.064, lng: 80.248 },
+                    { name: 'Tambaram', lat: 12.924, lng: 80.127 },
+                    { name: 'Guindy', lat: 13.008, lng: 80.211 },
+                    { name: 'T. Nagar', lat: 13.035, lng: 80.229 }
+                ]
+            }
+        };
+        
+        // Function to show route on map
+        function showRoute(route) {
+            // Clear existing layers except base map
+            map.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) return;
+                map.removeLayer(layer);
+            });
+            
+            if (!route || !route.stops || route.stops.length === 0) return;
+            
+            // Add markers for each stop
+            route.stops.forEach((stop, index) => {
+                L.marker([stop.lat, stop.lng], {
+                    icon: L.divIcon({
+                        html: `<div style="background: #6a11cb; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold;">${index + 1}</div>`,
+                        className: 'bus-stop-marker',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                })
+                .bindPopup(`<b>${stop.name}</b><br>Stop #${index + 1}`)
+                .addTo(map);
+            });
+            
+            // Add polyline for the route
+            const routeCoords = route.stops.map(stop => [stop.lat, stop.lng]);
+            L.polyline(routeCoords, {color: '#6a11cb', weight: 4, opacity: 0.7}).addTo(map);
+            
+            // Fit map to bounds of the route
+            map.fitBounds(L.latLngBounds(routeCoords), {padding: [50, 50]});
+            
+            // Show map if hidden
+            document.getElementById('map').style.display = 'block';
+            setTimeout(() => map.invalidateSize(), 100);
+        }
 
         // Navigation button click handlers
         document.getElementById('locationMapBtn').addEventListener('click', function() {
@@ -381,18 +441,68 @@
             button.addEventListener('click', function() {
                 // Remove 'today' class from all buttons
                 dateButtons.forEach(btn => btn.classList.remove('today'));
-                // Add 'today' class to clicked button if it's not the HOME button
-                if (!this.textContent.includes('HOME')) {
-                    this.classList.add('today');
+                
+                if (this.textContent.includes('HOME')) {
+                    // Handle HOME button click (hide map)
+                    document.getElementById('map').style.display = 'none';
+                    return;
                 }
-                // TODO: Update content based on selected date
+                
+                // Add 'today' class to clicked button
+                this.classList.add('today');
+                
+                // Get the date text (e.g., '25th')
+                const dateText = this.querySelector('.day')?.textContent || '';
+                
+                // Show route for selected date if available
+                if (busRoutes[dateText]) {
+                    showRoute(busRoutes[dateText]);
+                    
+                    // Update the content area with route info
+                    const contentArea = document.querySelector('.content-area');
+                    contentArea.innerHTML = `
+                        <div style="text-align: center; width: 100%;">
+                            <h2 style="color: var(--primary-color); margin-bottom: 15px;">${busRoutes[dateText].name}</h2>
+                            <div style="background: #f8f0ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left;">
+                                <h3 style="color: var(--secondary-color); margin-bottom: 10px;">Route Stops:</h3>
+                                <ol style="padding-left: 20px;">
+                                    ${busRoutes[dateText].stops.map((stop, idx) => 
+                                        `<li style="margin-bottom: 5px;">${stop.name}</li>`
+                                    ).join('')}
+                                </ol>
+                            </div>
+                            <div style="color: #666; font-size: 14px; margin: 10px 0;">
+                                Total Distance: ~15 km | Est. Time: 45-60 mins
+                            </div>
+                        </div>
+                    `;
+                }
             });
         });
 
-        // Route details button
+        // Route details button - Show all routes
         document.querySelector('.route-details-btn').addEventListener('click', function() {
-            alert('Route details will be displayed here');
-            // TODO: Implement route details functionality
+            const contentArea = document.querySelector('.content-area');
+            contentArea.innerHTML = `
+                <div style="width: 100%;">
+                    <h2 style="color: var(--primary-color); text-align: center; margin-bottom: 20px;">Available Bus Routes</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+                        ${Object.entries(busRoutes).map(([date, route]) => `
+                            <div style="background: #f8f0ff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                <h3 style="color: var(--secondary-color); margin-top: 0;">${route.name}</h3>
+                                <p><strong>Date:</strong> ${date} Dec, 2025</p>
+                                <p><strong>Stops:</strong> ${route.stops.length} stops</p>
+                                <p><strong>Distance:</strong> ~15 km</p>
+                                <p><strong>Est. Time:</strong> 45-60 mins</p>
+                                <button class="route-details-btn" style="margin-top: 10px; padding: 8px 15px; font-size: 14px;" 
+                                        onclick="showRoute(${JSON.stringify(route).replace(/"/g, '&quot;').replace(/'/g, '&#39;')});">
+                                    View on Map
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
         });
 
         // Search functionality

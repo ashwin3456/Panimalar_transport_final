@@ -7,6 +7,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        crossorigin=""/>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          crossorigin=""></script>
   <style>
     :root {
       --primary: #3f51b5;
@@ -345,21 +351,96 @@
       background: var(--border);
     }
 
-    .notification-badge {
+    .notification-dropdown {
+      display: none;
       position: absolute;
-      top: 2px;
-      right: 2px;
-      background: var(--danger);
-      color: white;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      font-size: 0.7rem;
-      font-weight: 600;
+      top: 100%;
+      right: 0;
+      width: 350px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      padding: 0;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(10px);
+      transition: all 0.2s;
+      z-index: 1000;
+    }
+
+    .notification-dropdown.show {
+      display: block;
+    }
+
+    .notification-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      border: 2px solid white;
+    }
+
+    .notification-header h4 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .mark-read-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .mark-read-btn:hover {
+      background-color: rgba(63, 81, 181, 0.1);
+    }
+
+    .notification-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .notification-item {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .notification-item:last-child {
+      border-bottom: none;
+    }
+
+    .notification-item:hover {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .notification-item.unread {
+      background-color: rgba(63, 81, 181, 0.05);
+    }
+
+    .notification-message {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .notification-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .notification-empty {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
     }
 
     /* Settings Dropdown Styles */
@@ -1196,13 +1277,12 @@
     .floating-notification-body {
       max-height: 300px;
       overflow-y: auto;
-      padding: 0.5rem;
     }
 
     .floating-notification-item {
       padding: 0.75rem;
       border-bottom: 1px solid var(--border);
-      transition: background 0.2s;
+      transition: background-color 0.2s;
       cursor: pointer;
     }
 
@@ -1238,7 +1318,7 @@
 
     .unread-indicator {
       position: absolute;
-      top: 0px;
+      top: 2px;
       right: -5px;
       background: #2196f3;
       color: white;
@@ -1508,10 +1588,6 @@
             </a>
           </div>
         </div>
-        <div class="notification-bell">
-          <i class="fas fa-bell"></i>
-          <span class="notification-badge">3</span>
-        </div>
         <div class="profile-dropdown">
           <div class="profile-dropdown-toggle" title="Profile">
             <img src="https://ui-avatars.com/api/?name=Loading&background=3f51b5&color=fff" alt="Profile" class="profile-avatar-sm" id="dropdownAvatarSm">
@@ -1742,6 +1818,249 @@
 
   <script>
     'use strict';
+    
+    // Notification System
+    class NotificationManager {
+      constructor() {
+        this.notificationBell = document.getElementById('notificationBell');
+        this.notificationBadge = null;
+        this.notificationDropdown = document.getElementById('notificationDropdown');
+        this.notificationList = document.getElementById('notificationList');
+        this.markAllReadBtn = document.getElementById('markAllRead');
+        this.notifications = [];
+        
+        this.initialize();
+      }
+      
+      initialize() {
+        if (!this.notificationBell) return;
+        
+        // Load notifications when the bell is clicked
+        this.notificationBell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.toggleDropdown();
+          if (this.notificationDropdown.classList.contains('show')) {
+            this.loadNotifications();
+          }
+        });
+        
+        // Mark all as read
+        if (this.markAllReadBtn) {
+          this.markAllReadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.markAllAsRead();
+          });
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!this.notificationBell.contains(e.target) && !this.notificationDropdown.contains(e.target)) {
+            this.notificationDropdown.classList.remove('show');
+          }
+        });
+        
+        // Initial load of notifications
+        this.loadNotifications();
+        
+        // Set up polling for new notifications
+        setInterval(() => this.loadNotifications(), 30000); // Check every 30 seconds
+      }
+      
+      toggleDropdown() {
+        this.notificationDropdown.classList.toggle('show');
+      }
+      
+      async loadNotifications() {
+        try {
+          // In a real implementation, you would fetch from your API:
+          // const response = await fetch('api/notifications.php');
+          // const data = await response.json();
+          
+          // For demo purposes, using sample data
+          const data = {
+            notifications: [
+              {
+                id: 1,
+                message: 'You have a new schedule assignment',
+                is_read: false,
+                created_at: new Date().toISOString(),
+                schedule_id: '123'
+              },
+              {
+                id: 2,
+                message: 'Route 45 has been updated',
+                is_read: false,
+                created_at: new Date(Date.now() - 3600000).toISOString(),
+                schedule_id: '124'
+              },
+              {
+                id: 3,
+                message: 'Your shift starts in 30 minutes',
+                is_read: true,
+                created_at: new Date(Date.now() - 86400000).toISOString(),
+                schedule_id: '125'
+              }
+            ]
+          };
+          
+          this.notifications = data.notifications || [];
+          const unreadCount = this.notifications.filter(n => !n.is_read).length;
+          this.updateBadge(unreadCount);
+          this.renderNotifications();
+        } catch (error) {
+          console.error('Error loading notifications:', error);
+        }
+      }
+      
+      async markAsRead(notificationId) {
+        try {
+          // In a real implementation, you would call your API:
+          // const response = await fetch('api/notifications.php', {
+          //   method: 'POST',
+          //   headers: { 'Content-Type': 'application/json' },
+          //   body: JSON.stringify({ notification_id: notificationId })
+          // });
+          
+          // For demo, just update local state
+          const notification = this.notifications.find(n => n.id === notificationId);
+          if (notification) {
+            notification.is_read = true;
+            this.updateBadge(Math.max(0, parseInt(this.notificationBadge.textContent) - 1));
+            this.renderNotifications();
+          }
+        } catch (error) {
+          console.error('Error marking notification as read:', error);
+        }
+      }
+      
+      async markAllAsRead() {
+        const unreadNotifications = this.notifications.filter(n => !n.is_read);
+        
+        try {
+          // In a real implementation, you would call your API for each unread notification
+          // await Promise.all(unreadNotifications.map(notification => 
+          //   fetch('api/notifications.php', {
+          //     method: 'POST',
+          //     headers: { 'Content-Type': 'application/json' },
+          //     body: JSON.stringify({ notification_id: notification.id })
+          // })
+          // ));
+          
+          // For demo, just update local state
+          this.notifications.forEach(notification => {
+            notification.is_read = true;
+          });
+          
+          this.updateBadge(0);
+          this.renderNotifications();
+          
+        } catch (error) {
+          console.error('Error marking all notifications as read:', error);
+        }
+      }
+      
+      updateBadge(count) {
+        // Removed badge update logic
+      }
+      
+      renderNotifications() {
+        if (!this.notifications.length) {
+          this.notificationList.innerHTML = '<div class="notification-empty">No notifications</div>';
+          return;
+        }
+        
+        this.notificationList.innerHTML = this.notifications
+          .map(notification => `
+            <div class="notification-item ${notification.is_read ? '' : 'unread'}" 
+                 data-id="${notification.id}"
+                 onclick="window.location.href='#schedule-${notification.schedule_id || ''}'">
+              <p class="notification-message">${this.escapeHtml(notification.message)}</p>
+              <div class="notification-time">
+                ${this.formatTimeAgo(notification.created_at)}
+              </div>
+            </div>
+          `)
+          .join('');
+        
+        // Add click handlers for marking as read
+        document.querySelectorAll('.notification-item:not(.read)').forEach(item => {
+          item.addEventListener('click', (e) => {
+            const notificationId = parseInt(item.dataset.id);
+            if (notificationId) {
+              this.markAsRead(notificationId);
+            }
+          });
+        });
+      }
+      
+      escapeHtml(unsafe) {
+        return unsafe
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+      
+      formatTimeAgo(timestamp) {
+        const now = new Date();
+        const date = new Date(timestamp);
+        const seconds = Math.floor((now - date) / 1000);
+        
+        const intervals = {
+          year: 31536000,
+          month: 2592000,
+          week: 604800,
+          day: 86400,
+          hour: 3600,
+          minute: 60
+        };
+        
+        for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+          const interval = Math.floor(seconds / secondsInUnit);
+          if (interval >= 1) {
+            return interval === 1 ? `1 ${unit} ago` : `${interval} ${unit}s ago`;
+          }
+        }
+        
+        return 'Just now';
+      }
+      
+      // Public method to add a notification (can be called from other parts of the app)
+      addNotification(message, scheduleId = null) {
+        const notification = {
+          id: Date.now(),
+          message,
+          schedule_id: scheduleId,
+          is_read: false,
+          created_at: new Date().toISOString()
+        };
+        
+        this.notifications.unshift(notification);
+        this.updateBadge(parseInt(this.notificationBadge.textContent || '0') + 1);
+        
+        // If dropdown is open, update the list
+        if (this.notificationDropdown.classList.contains('show')) {
+          this.renderNotifications();
+        }
+        
+        // Show a toast notification
+        this.showToast(notification);
+      }
+      
+      showToast(notification) {
+        // You can implement a toast notification here if needed
+        console.log('New notification:', notification);
+      }
+    }
+
+    // Initialize notification manager when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      window.notificationManager = new NotificationManager();
+      
+      // Example of how to add a notification from another part of the app:
+      // window.notificationManager.addNotification("Your notification message", "schedule123");
+    });
 
     // Translation dictionary
     const translations = {
@@ -1996,7 +2315,10 @@
                         const currentFilter = this.currentFilter || 'today';
                         const filteredSchedules = this.filterSchedules(data.schedules, currentFilter);
                         
-                        // For notifications, still use today's schedules
+                        // Display the filtered schedules in the main content
+                        this.displayDriverSchedules(filteredSchedules);
+                        
+                        // For notifications, use today's schedules
                         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
                         const todaySchedules = data.schedules.filter(schedule => schedule.schedule_date === today);
                         
@@ -2009,6 +2331,9 @@
                             
                             // Make sure the floating notification container is visible and updated
                             const notificationBody = document.querySelector('.floating-notification-body');
+                            
+                            // Update notification badge
+                            this.updateNotificationBadge(todaySchedules.length);
                             const notificationContainer = document.querySelector('.floating-notification-container');
                             
                             if (notificationBody && notificationContainer) {
@@ -2037,7 +2362,6 @@
                                                 </div>
                                                 <div class="floating-notification-text">
                                                     <p>Assigned to: ${scheduleRouteName} ${scheduleRouteNumber}</p>
-                                                    <p>${schedule.route_type || 'Schedule'} - ${schedule.time_slot || 'Time slot not set'}</p>
                                                     <span class="floating-notification-time" data-assignment-time="${assignmentTime}">Just now</span>
                                                 </div>
                                             </div>
@@ -2065,34 +2389,7 @@
                                             console.log('Schedule ID:', schedule.id);
                                             console.log('Route name:', scheduleRouteName);
                                             
-                                            // Decrease notification count
-                                            const notificationBadge = document.querySelector('.notification-badge');
-                                            console.log('Found notification badge:', notificationBadge);
-                                            console.log('Badge HTML:', notificationBadge ? notificationBadge.outerHTML : 'No badge found');
-                                            console.log('Badge textContent:', notificationBadge ? notificationBadge.textContent : 'No text content');
-                                            console.log('Badge innerHTML:', notificationBadge ? notificationBadge.innerHTML : 'No innerHTML');
-                                            
-                                            if (notificationBadge) {
-                                                const currentCount = parseInt(notificationBadge.textContent) || 0;
-                                                const newCount = Math.max(0, currentCount - 1);
-                                                
-                                                console.log(`Attempting to decrease count from ${currentCount} to ${newCount}`);
-                                                console.log('Badge display style before:', notificationBadge.style.display);
-                                                
-                                                if (newCount > 0) {
-                                                    notificationBadge.textContent = newCount > 9 ? '9+' : newCount.toString();
-                                                    notificationBadge.style.display = 'flex'; // Make sure badge is visible
-                                                    // Update localStorage
-                                                    localStorage.setItem('notificationCount', newCount.toString());
-                                                    console.log('Updated badge to:', notificationBadge.textContent);
-                                                    console.log('Badge display style after:', notificationBadge.style.display);
-                                                } else {
-                                                    // Hide badge if count reaches 0
-                                                    notificationBadge.style.display = 'none';
-                                                    localStorage.setItem('notificationCount', '0');
-                                                    console.log('Hiding badge - count reached 0');
-                                                }
-                                            }
+                                            // Notification count functionality removed
                                             
                                             // Remove the clicked notification item from the DOM
                                             scheduleNotification.style.opacity = '0.5';
@@ -2126,21 +2423,7 @@
                                     }
                                 });
                                 
-                                // Update notification badge
-                                const notificationBadge = document.querySelector('.notification-badge');
-                                if (notificationBadge) {
-                                    // Check if we have a saved count from localStorage
-                                    const savedCount = parseInt(localStorage.getItem('notificationCount') || '0');
-                                    const totalCount = todaySchedules.length;
-                                    
-                                    // Use the saved count if it exists, otherwise use total
-                                    const displayCount = (savedCount >= 0) ? savedCount : totalCount;
-                                    
-                                    notificationBadge.style.display = displayCount > 0 ? 'flex' : 'none';
-                                    notificationBadge.textContent = displayCount > 9 ? '9+' : displayCount.toString();
-                                    
-                                    console.log(`Badge set to: ${displayCount} (saved: ${savedCount}, total: ${totalCount})`);
-                                }
+                                // Notification badge functionality removed
                             }
                             
                             // Use displayDriverSchedules to show filtered schedules
@@ -2169,11 +2452,7 @@
                                 this.startNotificationTimeUpdate();
                             }
                             
-                            // Hide notification badge when no assignments
-                            const notificationBadge = document.querySelector('.notification-badge');
-                            if (notificationBadge) {
-                                notificationBadge.style.display = 'none';
-                            }
+                            // Notification badge functionality removed
                             
                             // Display empty assignments
                             this.displayDriverSchedules([]);
@@ -2507,7 +2786,6 @@
             this.loadDriverAssignments(); // Load driver assignments (main function)
             this.initializeLanguage();
             this.startNotificationTimeUpdate(); // Start real-time notification time updates
-            this.initializeNotificationBadge(); // Initialize notification badge
             console.log('Driver Dashboard initialized successfully');
           } catch (error) {
             console.error('Initialization error:', error);
@@ -2587,7 +2865,7 @@
           this.elements.settingsLogoutBtn = document.getElementById('settingsLogoutBtn');
           
           // Notification elements
-          this.elements.notificationBell = document.querySelector('.notification-bell');
+          this.elements.notificationBell = null;
           this.elements.floatingNotificationContainer = document.querySelector('.floating-notification-container');
           this.elements.floatingNotificationClose = document.getElementById('floatingNotificationClose');
           
@@ -2730,6 +3008,50 @@
               }
             });
           }
+        },
+
+        // Toggle floating notifications
+        toggleFloatingNotifications: function(e) {
+          if (e) e.stopPropagation();
+          const container = this.elements.floatingNotificationContainer;
+          if (container) {
+            container.classList.toggle('active');
+            
+            // If showing, update the notification times and mark as read
+            if (container.classList.contains('active')) {
+              this.updateNotificationTimes();
+              this.markAllNotificationsAsRead();
+            }
+          }
+        },
+        
+        // Mark all notifications as read
+        markAllNotificationsAsRead: function() {
+          const unreadItems = document.querySelectorAll('.floating-notification-item.unread');
+          if (unreadItems.length > 0) {
+            unreadItems.forEach(item => {
+              item.classList.remove('unread');
+              const indicator = item.querySelector('.unread-indicator');
+              if (indicator) indicator.style.display = 'none';
+            });
+            
+            // Update badge count
+            this.updateNotificationBadge(0);
+            
+            // In a real implementation, you would also update the server here
+            // fetch('api/notifications/mark-all-read.php', { method: 'POST' });
+          }
+        },
+        
+        // Update notification times
+        updateNotificationTimes: function() {
+          const timeElements = document.querySelectorAll('.floating-notification-time');
+          timeElements.forEach(el => {
+            const time = el.getAttribute('data-assignment-time');
+            if (time) {
+              el.textContent = this.getTimeAgo(time);
+            }
+          });
         },
 
         // Toggle dropdown
@@ -2882,6 +3204,7 @@
 
         // View route functionality
         viewRoute: function(schedule) {
+            console.log('View Route clicked! Schedule data:', schedule);
             // Create route map modal
             const routeMapModal = document.createElement('div');
             routeMapModal.className = 'route-map-modal';
@@ -2941,6 +3264,100 @@
                     align-items: center;
                     justify-content: center;
                     z-index: 9999;
+                }
+                
+                /* Stop Item Styles */
+                .stop-item {
+                    background: white;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-bottom: 12px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                    border-left: 4px solid #2196F3;
+                    transition: all 0.3s ease;
+                }
+                
+                .stop-item:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                }
+                
+                .stop-item-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                }
+                
+                .stop-name {
+                    font-weight: 600;
+                    color: #333;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                
+                .stop-name i {
+                    color: #2196F3;
+                }
+                
+                .stop-time {
+                    background: #f0f7ff;
+                    color: #1976D2;
+                    padding: 3px 10px;
+                    border-radius: 12px;
+                    font-size: 0.9em;
+                    font-weight: 500;
+                }
+                
+                .stop-details {
+                    display: flex;
+                    gap: 15px;
+                    margin-top: 8px;
+                    font-size: 0.9em;
+                    color: #666;
+                }
+                
+                .stop-code {
+                    background: #f5f5f5;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 0.85em;
+                }
+                
+                .stop-distance {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    color: #666;
+                    font-size: 0.9em;
+                }
+                
+                .stop-distance i {
+                    color: #4CAF50;
+                }
+                
+                .no-stops-message {
+                    text-align: center;
+                    padding: 30px 20px;
+                    color: #666;
+                    background: #f9f9f9;
+                    border-radius: 8px;
+                    border: 1px dashed #ddd;
+                    margin: 20px 0;
+                }
+                
+                .no-stops-message i {
+                    font-size: 2.5em;
+                    color: #bbb;
+                    margin-bottom: 10px;
+                    display: block;
+                }
+                
+                .no-stops-message p {
+                    margin: 10px 0 0;
+                    color: #888;
                 }
                 
                 .route-map-content {
@@ -3116,7 +3533,7 @@
                 
                 .stop-item:hover {
                     transform: translateX(5px);
-                    box-shadow: 0 8px 25px rgba(33, 150, 243, 0.2);
+                    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
                 }
                 
                 .stop-item::before {
@@ -3200,21 +3617,38 @@
 
         // Fetch route data from database
         fetchRouteDataFromDatabase: function(routeId, schedule, modalElement) {
-            // API endpoint to get route stops from database
-            const apiUrl = `./api/data.php?action=get_route_stops&route_id=${routeId}&bus_id=${schedule.bus_id}`;
+            console.log(`Fetching route data from: ./api/data.php?action=get_route_stops&route_id=${routeId}&bus_id=${schedule.bus_id || ''}`);
             
-            fetch(apiUrl)
+            fetch(`./api/data.php?action=get_route_stops&route_id=${routeId}&bus_id=${schedule.bus_id || ''}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log('Route data from database:', data);
                     
-                    if (data.success && data.stops && data.stops.length > 0) {
-                        // Update map with real route data
-                        this.updateMapWithRealData(data.stops, schedule, modalElement);
+                    // Check if we have stops data in the response
+                    if (data && Array.isArray(data.stops) && data.stops.length > 0) {
+                        // Process the stops data to match expected format
+                        const processedStops = data.stops.map((stop, index) => ({
+                            stop_id: stop.stop_id || `stop_${index}`,
+                            stop_name: stop.stop_name || `Stop ${index + 1}`,
+                            stop_code: stop.stop_code || `S${index + 1}`,
+                            // Use lat/lon from database, fall back to latitude/longitude if not available
+                            latitude: parseFloat(stop.lat) || parseFloat(stop.latitude) || 0,
+                            longitude: parseFloat(stop.lon) || parseFloat(stop.longitude) || 0,
+                            arrival_time: stop.arrival_time || '--:--',
+                            distance: stop.distance || 0
+                        }));
+                        
+                        this.updateMapWithRealData(processedStops, schedule, modalElement);
                     } else {
-                        // Fallback to default data if no database data
-                        console.log('No route data found, using fallback');
-                        this.updateMapWithDefaultData(schedule, modalElement);
+                        // If no stops in response, check if we have a different structure
+                        const stops = data.stops || [];
+                        if (stops.length > 0) {
+                            this.updateMapWithRealData(stops, schedule, modalElement);
+                        } else {
+                            console.warn('No valid stops data found in response, using fallback');
+                            console.log('Response data:', data);
+                            this.updateMapWithDefaultData(schedule, modalElement);
+                        }
                     }
                 })
                 .catch(error => {
@@ -3226,64 +3660,220 @@
 
         // Update map with real database data
         updateMapWithRealData: function(stops, schedule, modalElement) {
+            console.log('Updating map with stops:', stops);
+            if (!stops || !Array.isArray(stops) || stops.length === 0) {
+                console.warn('No valid stops provided to updateMapWithRealData');
+                this.updateMapWithDefaultData(schedule, modalElement);
+                return;
+            }
             const mapContainer = modalElement.querySelector('.map-container');
             const stopsTimeline = modalElement.querySelector('.stops-timeline');
             
             // Update map with real route path
             if (mapContainer) {
+                // Create a unique ID for the map container
+                const mapId = `routeMap_${Date.now()}`;
+                
+                // Clear existing content and set up the map container
                 mapContainer.innerHTML = `
-                    <div class="interactive-map">
-                        <div class="map-canvas" style="height: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); position: relative;">
-                            <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-                                <path d="M 50 350 Q 200 200 350 150 T 650 100" 
-                                      stroke="#2196F3" 
-                                      stroke-width="4" 
-                                      fill="none"
-                                      stroke-dasharray="10,5"
-                                      style="animation: dash 20s linear infinite;">
-                                </path>
-                                ${stops.map((stop, index) => `
-                                    <circle cx="${50 + index * 150}" cy="${350 - index * 50}" r="8" fill="${index === stops.length - 1 ? '#4CAF50' : '#2196F3'}" />
-                                `).join('')}
-                            </svg>
-                            <div style="position: absolute; top: 20px; left: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                                <h4 style="margin: 0 0 10px 0; color: #1976D2;">${schedule.route_name || 'Route'}</h4>
-                                <p style="margin: 0; color: #666; font-size: 0.9rem;">Total Stops: ${stops.length}</p>
-                                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">Est. Time: ${schedule.time_slot || '45 mins'}</p>
-                            </div>
-                        </div>
+                    <div id="${mapId}" style="height: 400px; width: 100%; border-radius: 8px; overflow: hidden;"></div>
+                    <div class="map-legend" style="margin-top: 10px; text-align: center; font-size: 12px; color: #666;">
+                        <span style="display: inline-flex; align-items: center; margin: 0 10px;">
+                            <span style="display: inline-block; width: 12px; height: 12px; background-color: #4CAF50; border-radius: 50%; margin-right: 5px;"></span>
+                            Bus Stops
+                        </span>
+                        <span style="display: inline-flex; align-items: center; margin: 0 10px;">
+                            <span style="display: inline-block; width: 12px; height: 12px; background-color: #2196F3; margin-right: 5px;"></span>
+                            Route Path
+                        </span>
                     </div>
                 `;
-                
-                // Add animation style
-                const style = document.createElement('style');
-                style.textContent = `
-                    @keyframes dash {
-                        to {
-                            stroke-dashoffset: -100;
-                        }
+
+                // Initialize the map after ensuring Leaflet is loaded
+                const initMap = () => {
+                    if (!window.L) {
+                        console.error('Leaflet not loaded');
+                        return;
                     }
-                `;
-                document.head.appendChild(style);
+
+                    // Initialize the map
+                    const map = L.map(mapId, {
+                        zoomControl: true,
+                        scrollWheelZoom: false,
+                        dragging: true,
+                        tap: false
+                    });
+
+                    // Add OpenStreetMap tile layer
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 18
+                    }).addTo(map);
+
+                    // Create a feature group to store the route and markers
+                    const routeGroup = L.featureGroup().addTo(map);
+
+                    // Add markers for each stop
+                    const stopMarkers = [];
+                    const stopLatLngs = [];
+                    
+                    // Function to get route from OSRM
+                    const getRoute = (coordinates) => {
+                        const coords = coordinates.map(coord => `${coord.lng},${coord.lat}`).join(';');
+                        const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+                        
+                        return fetch(url)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.routes && data.routes[0]) {
+                                    return data.routes[0].geometry.coordinates;
+                                }
+                                return [];
+                            })
+                            .catch(error => {
+                                console.error('Error fetching route:', error);
+                                return [];
+                            });
+                    };
+
+                    // Define fallback coordinates (Anna Nagar area as center)
+                    const fallbackCoords = [
+                        [13.0902, 80.2124], // Anna Nagar Bus Depot
+                        [13.0881, 80.2104], // Thirumangalam
+                        [13.0847, 80.2083], // Anna Nagar Roundtana
+                        [13.0805, 80.2222]  // Shenoy Nagar
+                    ];
+
+                    // Process each stop from the API response
+                    stops.forEach((stop, index) => {
+                        // Try to get coordinates, fall back to default if missing
+                        let lat, lng;
+                        
+                        // First try lat/lon (from database), then latitude/longitude (fallback)
+                        if (stop.lat !== undefined && stop.lon !== undefined) {
+                            lat = parseFloat(stop.lat);
+                            lng = parseFloat(stop.lon);
+                        } else if (stop.latitude && stop.longitude) {
+                            lat = parseFloat(stop.latitude);
+                            lng = parseFloat(stop.longitude);
+                        }
+                        
+                        // If coordinates are still invalid, use fallback with offset
+                        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+                            const fallbackIndex = index % fallbackCoords.length;
+                            lat = fallbackCoords[fallbackIndex][0] + (Math.random() * 0.01 - 0.005); // Small random offset
+                            lng = fallbackCoords[fallbackIndex][1] + (Math.random() * 0.01 - 0.005);
+                            console.warn(`Using fallback coordinates for stop: ${stop.stop_name || 'Stop ' + (index + 1)}`);
+                        }
+                        
+                        const latLng = L.latLng(lat, lng);
+                        stopLatLngs.push(latLng);
+
+                        // Create a custom icon for the stop
+                        const stopIcon = L.divIcon({
+                            className: 'bus-stop-icon',
+                            html: `<div style="background-color: #4CAF50; color: white; width: 24px; height: 24px; border-radius: 50%; 
+                                  border: 2px solid white; display: flex; align-items: center; justify-content: center; 
+                                  font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${index + 1}</div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12],
+                            popupAnchor: [0, -12]
+                        });
+
+                        // Add marker to the map
+                        const marker = L.marker(latLng, { icon: stopIcon })
+                            .addTo(routeGroup)
+                            .bindPopup(`
+                                <div style="min-width: 180px;">
+                                    <h4 style="margin: 0 0 5px 0; color: #333; font-size: 14px;">
+                                        <i class="fas fa-map-marker-alt"></i> ${stop.name}
+                                    </h4>
+                                    <p style="margin: 5px 0; font-size: 12px;">
+                                        <i class="far fa-clock"></i> Stop #${index + 1}
+                                    </p>
+                                </div>
+                            `);
+
+                        stopMarkers.push(marker);
+                    });
+
+                    // Draw the route line if we have at least 2 points
+                    if (stopLatLngs.length >= 2) {
+                        const routeLine = L.polyline(stopLatLngs, {
+                            color: '#2196F3',
+                            weight: 4,
+                            opacity: 0.7,
+                            lineJoin: 'round'
+                        }).addTo(routeGroup);
+                    }
+
+                    // Fit the map to show all markers with padding
+                    if (stopLatLngs.length > 0) {
+                        map.fitBounds(routeGroup.getBounds().pad(0.1));
+                    } else {
+                        // Default to Anna Nagar area if no valid coordinates
+                        map.setView([13.0847, 80.2083], 14);
+                    }
+
+                    // Add scale control
+                    L.control.scale({ position: 'bottomright' }).addTo(map);
+
+                };
+
+                // Initialize the map
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                    // If document is already loaded, initialize map immediately
+                    initMap();
+                } else {
+                    // Wait for the document to be fully loaded
+                    document.addEventListener('DOMContentLoaded', initMap);
+                }
             }
             
             // Update stops timeline with real data
             if (stopsTimeline) {
-                stopsTimeline.innerHTML = stops.map((stop, index) => `
-                    <div class="stop-item">
-                        <div class="stop-item-header">
-                            <div class="stop-name">${stop.stop_name || 'Stop ' + (index + 1)}</div>
-                            <div class="stop-time">${stop.arrival_time || 'N/A'}</div>
+                if (!stops || stops.length === 0) {
+                    stopsTimeline.innerHTML = `
+                        <div class="no-stops-message">
+                            <i class="fas fa-info-circle"></i>
+                            <p>No scheduled stops found for this bus route.</p>
                         </div>
-                        <div class="stop-address">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>${stop.address || stop.location || 'Address not available'}</span>
+                    `;
+                } else {
+                    stopsTimeline.innerHTML = stops.map((stop, index) => `
+                        <div class="stop-item" data-stop-id="${stop.stop_id || index}" 
+                             style="padding: 10px; border-bottom: 1px solid #eee; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <div style="display: flex; align-items: center;">
+                                    <div style="width: 24px; height: 24px; background-color: #4CAF50; 
+                                         color: white; border-radius: 50%; display: flex; align-items: center; 
+                                         justify-content: center; margin-right: 10px; font-weight: bold;">
+                                        ${index + 1}
+                                    </div>
+                                    <div class="stop-name" style="font-weight: 500;">
+                                        <i class="fas fa-map-marker-alt" style="margin-right: 5px; color: #666;"></i>
+                                        ${stop.stop_name || `Stop ${index + 1}`}
+                                    </div>
+                                </div>
+                                <div class="stop-time" style="font-size: 0.9em; color: #666;">
+                                    ${stop.arrival_time || '--:--'}
+                                </div>
+                            </div>
+                            ${(stop.stop_code || stop.distance) ? `
+                            <div style="margin-left: 34px; font-size: 0.85em; color: #777;">
+                                ${stop.stop_code ? `
+                                <span class="stop-code" style="margin-right: 10px;">
+                                    <i class="fas fa-hashtag"></i> ${stop.stop_code}
+                                </span>` : ''}
+                                ${stop.distance ? `
+                                <span class="stop-distance">
+                                    <i class="fas fa-route"></i> ${stop.distance} km
+                                    ${index > 0 ? 'from previous' : 'from start'}
+                                </span>` : ''}
+                            </div>` : ''}
                         </div>
-                        ${stop.distance ? `<div style="margin-top: 8px; color: #6c757d; font-size: 0.85rem;">
-                            <i class="fas fa-road"></i> Distance: ${stop.distance} km
-                        </div>` : ''}
-                    </div>
-                `).join('');
+                    `).join('');
+                }
             }
         },
 
@@ -3291,6 +3881,18 @@
         updateMapWithDefaultData: function(schedule, modalElement) {
             const mapContainer = modalElement.querySelector('.map-container');
             const stopsTimeline = modalElement.querySelector('.stops-timeline');
+            
+            if (stopsTimeline) {
+                stopsTimeline.innerHTML = `
+                    <div class="no-stops-message">
+                        <i class="fas fa-info-circle"></i>
+                        <p>No scheduled stops found for this bus route.</p>
+                        <p style="margin-top: 10px; font-size: 0.9em; color: #999;">
+                            Please check back later or contact support.
+                        </p>
+                    </div>
+                `;
+            }
             
             // Default fallback stops
             const defaultStops = [
@@ -3320,7 +3922,7 @@
                                 <circle cx="500" cy="120" r="8" fill="#2196F3" />
                                 <circle cx="650" cy="100" r="8" fill="#4CAF50" />
                             </svg>
-                            <div style="position: absolute; top: 20px; left: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                            <div style="position: absolute; top: 20px; left: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
                                 <h4 style="margin: 0 0 10px 0; color: #1976D2;">${schedule.route_name || 'Route'}</h4>
                                 <p style="margin: 0; color: #666; font-size: 0.9rem;">Total Distance: ~15 km</p>
                                 <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">Est. Time: ${schedule.time_slot || '45 mins'}</p>
@@ -3442,15 +4044,7 @@
 
         // Update notification badge count
         updateNotificationBadge: function(count) {
-          const badge = document.getElementById('notificationBadge');
-          if (badge) {
-            if (count > 0) {
-              badge.textContent = count;
-              badge.style.display = 'flex';
-            } else {
-              badge.style.display = 'none';
-            }
-          }
+          // Removed badge update logic
         },
 
         // Add notification and update badge
