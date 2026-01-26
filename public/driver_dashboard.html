@@ -7,12 +7,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        crossorigin=""/>
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          crossorigin=""></script>
+  <!-- Leaflet CSS (same as admin dashboard) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
   <style>
     :root {
       --primary: #3f51b5;
@@ -1699,21 +1696,6 @@
       
       <!-- Sidebar Widgets -->
       <div class="sidebar-widgets">
-        <!-- Trip Status -->
-        <div class="sidebar-widget">
-          <div class="widget-header">
-            <h3>
-              <i class="fas fa-map-marked-alt"></i>
-              <h3 data-translate="currentTrip">Current Trip Status</h3>
-            </h3>
-          </div>
-          <div class="widget-body">
-            <div class="no-trip">
-              <i class="fas fa-location-dot"></i>
-              <p data-translate="noActiveTrip">No active trip</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </main>
@@ -1818,6 +1800,251 @@
 
   <script>
     'use strict';
+    
+    // Global variables for live tracking (moved outside object)
+    let currentTrip = null;
+    let watchId = null;
+    let busMarker = null;
+    
+    // Global stops array and findStop function (same as admin dashboard)
+    let stops = [];
+    const findStop = id => stops.find(s => s.id === id);
+    
+    // Load stops data from server (same as admin dashboard)
+    function loadStopsFromServer() {
+      fetch('./api/data.php?action=load')
+        .then(response => response.json())
+        .then(data => {
+          console.log('Loading stops from server:', data);
+          if (data && data.stops) {
+            stops = data.stops;
+            console.log('Stops loaded successfully:', stops.length, 'stops');
+          } else {
+            console.warn('No stops data found in server response');
+          }
+        })
+        .catch(error => {
+          console.error('Error loading stops from server:', error);
+        });
+    }
+    
+    // Load stops when page loads
+    loadStopsFromServer();
+    
+    // Start live trip function (global function)
+    function startLiveTrip(routeId, busId, scheduleId) {
+        console.log('Starting live trip for:', { routeId, busId, scheduleId });
+        
+        // Since routeId and busId are undefined, we'll work with just scheduleId
+        // The live tracking and view route will work with scheduleId alone
+        
+        // Check if geolocation is supported
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser');
+            return;
+        }
+        
+        // Request GPS permission
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                // Permission granted, start tracking
+                console.log('GPS permission granted');
+                startLocationTracking(scheduleId, scheduleId, scheduleId); // Use scheduleId for all params
+                updateStartTripButton(true);
+                alert('Trip started! Live location sharing is active.');
+                
+                // Find the schedule data and automatically open View Route
+                const assignmentCards = document.querySelectorAll('.assignment-card');
+                assignmentCards.forEach(card => {
+                    const cardScheduleId = card.getAttribute('data-schedule-id');
+                    if (cardScheduleId === scheduleId.toString()) {
+                        // Find the view route button and click it
+                        const viewRouteBtn = card.querySelector('.btn-outline');
+                        if (viewRouteBtn) {
+                            console.log('Automatically opening View Route for schedule:', scheduleId);
+                            viewRouteBtn.click();
+                        }
+                    }
+                });
+            },
+            (error) => {
+                console.error('GPS permission denied:', error);
+                alert('Location permission denied. Please enable location permissions to start trip.');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    }
+    
+    // Start location tracking (global function)
+    function startLocationTracking(routeId, busId, scheduleId) {
+        currentTrip = {
+            routeId: routeId,
+            busId: busId,
+            scheduleId: scheduleId,
+            startTime: new Date().toISOString(),
+            locations: []
+        };
+        
+        // Start watching position
+        watchId = navigator.geolocation.watchPosition(
+            (position) => handleLocationUpdate(position),
+            (error) => handleLocationError(error),
+            {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            }
+        );
+        
+        console.log('Live location tracking started');
+    }
+    
+    // Handle location updates (global function)
+    function handleLocationUpdate(position) {
+        const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log('New location:', location);
+        
+        if (currentTrip) {
+            currentTrip.locations.push(location);
+            updateLiveLocationOnMap(location);
+        }
+    }
+    
+    // Update live location on map (global function)
+    function updateLiveLocationOnMap(location) {
+        // Find all open route modals
+        const routeModals = document.querySelectorAll('.route-map-modal');
+        routeModals.forEach(modal => {
+            const mapContainer = modal.querySelector('.map-container');
+            if (mapContainer) {
+                const mapElement = mapContainer.querySelector('[id^="routeMap_"]');
+                if (mapElement && window.L) {
+                    // Get the Leaflet map instance
+                    const mapId = mapElement.id;
+                    const map = window.L && window.L.Map && window.L.Map._maps && window.L.Map._maps[mapId];
+                    
+                    if (map) {
+                        // Remove existing bus marker
+                        if (busMarker) {
+                            map.removeLayer(busMarker);
+                        }
+                        
+                        // Create bus icon
+                        const busIcon = L.divIcon({
+                            className: 'live-bus-marker',
+                            html: `<div style="background-color: #FF6B35; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid white; animation: pulse 2s infinite;">
+                                        <i class="fas fa-bus" style="font-size: 12px;"></i>
+                                    </div>`,
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
+                        });
+                        
+                        // Add bus marker
+                        busMarker = L.marker([location.lat, location.lng], { icon: busIcon })
+                            .addTo(map)
+                            .bindPopup(`
+                                <div style="min-width: 150px; padding: 5px;">
+                                    <h4 style="margin: 0 0 5px 0; color: #333; font-size: 12px;">
+                                        <i class="fas fa-bus"></i> Live Bus Location
+                                    </h4>
+                                    <p style="margin: 2px 0; font-size: 11px; color: #666;">
+                                        <i class="fas fa-clock"></i> ${new Date(location.timestamp).toLocaleTimeString()}
+                                    </p>
+                                    <p style="margin: 2px 0; font-size: 11px; color: #666;">
+                                        <i class="fas fa-satellite-dish"></i> Accuracy: ±${location.accuracy.toFixed(0)}m
+                                    </p>
+                                </div>
+                            `);
+                        
+                        console.log('Live bus marker added to map');
+                    }
+                }
+            }
+        });
+    }
+    
+    // Handle location errors (global function)
+    function handleLocationError(error) {
+        console.error('Location error:', error);
+        let errorMessage = 'Unable to get your location.';
+        
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage = 'Location access denied. Please enable location permissions.';
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage = 'Location information is unavailable.';
+                break;
+            case error.TIMEOUT:
+                errorMessage = 'Location request timed out.';
+                break;
+        }
+        
+        alert(errorMessage);
+    }
+    
+    // Stop trip function (global function)
+    function stopLiveTrip() {
+        if (watchId) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+        }
+        
+        if (busMarker) {
+            const map = busMarker._map;
+            if (map) {
+                map.removeLayer(busMarker);
+            }
+            busMarker = null;
+        }
+        
+        currentTrip = null;
+        updateStartTripButton(false);
+        alert('Trip stopped. Location sharing disabled.');
+    }
+    
+    // Update start trip button (global function)
+    function updateStartTripButton(isActive) {
+        const startButtons = document.querySelectorAll('.start-trip-btn');
+        startButtons.forEach(button => {
+            if (isActive) {
+                button.innerHTML = '<i class="fas fa-stop"></i> Stop Trip';
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-danger');
+                button.setAttribute('onclick', 'stopLiveTrip()');
+            } else {
+                button.innerHTML = '<i class="fas fa-play"></i> Start Trip';
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-primary');
+                // Keep original onclick
+            }
+        });
+    }
+    
+    // Add CSS animation for pulse effect
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Test if functions are accessible (moved here after function definitions)
+    console.log('startLiveTrip function available:', typeof startLiveTrip);
+    console.log('stopLiveTrip function available:', typeof stopLiveTrip);
     
     // Notification System
     class NotificationManager {
@@ -2524,7 +2751,9 @@
                             <span class="status-badge assigned">
                                 <i class="fas fa-check-circle"></i> Scheduled
                             </span>
-                            <small class="assigned-date">Updated: ${new Date(assignment.assigned_date).toLocaleDateString()}</small>
+                            <button class="btn btn-primary btn-sm start-trip-btn" onclick="startLiveTrip('${assignment.route_id}', '${assignment.bus_id}', '${assignment.id}')">
+                                <i class="fas fa-play"></i> Start Trip
+                            </button>
                         </div>
                     </div>
                 `;
@@ -2646,7 +2875,7 @@
                         </div>
                         
                         <div class="action-buttons">
-                            <button class="btn btn-primary" data-translate="startTrip">
+                            <button class="btn btn-primary btn-sm start-trip-btn" onclick="startLiveTrip('${schedule.route_id}', '${schedule.bus_id}', '${schedule.id}')">
                                 <i class="fas fa-play"></i> <span data-translate="startTrip">Start Trip</span>
                             </button>
                             <button class="btn btn-outline" data-translate="viewRoute">
@@ -2659,13 +2888,8 @@
                     card.setAttribute('data-time-slot', schedule.time_slot || '');
                     card.setAttribute('data-route-type', schedule.route_type || '');
                     
-                    // Add click handlers for the action buttons
-                    const startTripBtn = card.querySelector('.btn-primary');
+                    // Add click handler for view route button only
                     const viewRouteBtn = card.querySelector('.btn-outline');
-                    
-                    if (startTripBtn) {
-                        startTripBtn.addEventListener('click', () => this.startTrip(schedule));
-                    }
                     
                     if (viewRouteBtn) {
                         viewRouteBtn.addEventListener('click', () => this.viewRoute(schedule));
@@ -3220,7 +3444,7 @@
                         <div class="route-info-bar">
                             <div class="route-info-item">
                                 <i class="fas fa-bus"></i>
-                                <span>${schedule.bus_name || 'Not assigned'}</span>
+                                <span>${schedule.bus_number || 'Bus ' + (schedule.bus_id || 'N/A')}</span>
                             </div>
                             <div class="route-info-item">
                                 <i class="fas fa-clock"></i>
@@ -3234,7 +3458,7 @@
                         <div class="map-container" id="routeMap_${schedule.id || Date.now()}">
                             <div class="map-placeholder">
                                 <i class="fas fa-map-marked-alt"></i>
-                                <p>Loading route map...</p>
+                                <p>Loading Leaflet map with OSRM routing...</p>
                             </div>
                         </div>
                         <div class="route-stops-list">
@@ -3242,7 +3466,7 @@
                             <div class="stops-timeline" id="stopsTimeline_${schedule.id || Date.now()}">
                                 <div class="loading-stops">
                                     <i class="fas fa-spinner fa-spin"></i>
-                                    <p>Loading route stops from database...</p>
+                                    <p>Loading stops...</p>
                                 </div>
                             </div>
                         </div>
@@ -3623,20 +3847,69 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log('Route data from database:', data);
+                    console.log('Database API stops order:', data.stops ? data.stops.map((s, i) => `${i+1}: ${s.stop_name} (${s.lat}, ${s.lon})`) : 'No stops');
                     
                     // Check if we have stops data in the response
                     if (data && Array.isArray(data.stops) && data.stops.length > 0) {
-                        // Process the stops data to match expected format
-                        const processedStops = data.stops.map((stop, index) => ({
-                            stop_id: stop.stop_id || `stop_${index}`,
-                            stop_name: stop.stop_name || `Stop ${index + 1}`,
-                            stop_code: stop.stop_code || `S${index + 1}`,
-                            // Use lat/lon from database, fall back to latitude/longitude if not available
-                            latitude: parseFloat(stop.lat) || parseFloat(stop.latitude) || 0,
-                            longitude: parseFloat(stop.lon) || parseFloat(stop.longitude) || 0,
-                            arrival_time: stop.arrival_time || '--:--',
-                            distance: stop.distance || 0
-                        }));
+                        // The database API returns stops in wrong order, so we need to use the correct sequence
+                        // Admin dashboard uses the order from the bus's stops array, not database order
+                        console.log('Original database order (WRONG):', data.stops.map((s, i) => `${i+1}: ${s.stop_name || s.name || 'Unknown'} (${s.lat}, ${s.lon})`));
+                        
+                        // Get stop IDs in the order they should be (like admin dashboard)
+                        // We need to determine the correct order based on coordinates or admin dashboard sequence
+                        const stopIds = data.stops.map(stop => stop.stop_id || stop.id);
+                        console.log('Stop IDs from database (wrong order):', stopIds);
+                        
+                        // Find the correct order by matching with admin dashboard sequence
+                        // Zone 8 Anna Nagar should be first, then EVR Periyar Salai, etc.
+                        const correctOrder = ['stop_tafrn97', 'stop_261hk26', 'stop_8tsvpta', 'stop_qydsy4l']; // Based on admin dashboard order
+                        
+                        // Reorder the stops to match admin dashboard
+                        const reorderedStops = [];
+                        correctOrder.forEach(correctId => {
+                            const stop = data.stops.find(s => (s.stop_id || s.id) === correctId);
+                            if (stop) {
+                                reorderedStops.push(stop);
+                            }
+                        });
+                        
+                        console.log('Reordered stops (CORRECT):', reorderedStops.map((s, i) => `${i+1}: ${s.stop_name || s.name || 'Unknown'} (${s.lat}, ${s.lon})`));
+                        
+                        // Get complete stop objects using findStop() method (same as admin dashboard)
+                        console.log('Current stops array:', stops);
+                        console.log('Available stop IDs in stops array:', stops.map(s => `${s.id}: ${s.name}`));
+                        
+                        const processedStops = reorderedStops.map((stop, index) => {
+                            const stopId = stop.stop_id || stop.id;
+                            const foundStop = findStop(stopId); // Use global findStop function (same as admin dashboard)
+                            console.log(`Looking for stop ID: ${stopId}, Found:`, foundStop);
+                            
+                            if (foundStop) {
+                                return {
+                                    stop_id: foundStop.id || stopId,
+                                    stop_name: foundStop.name || `Stop ${index + 1}`,
+                                    stop_code: foundStop.stop_code || `S${index + 1}`,
+                                    lat: parseFloat(foundStop.lat) || 0,
+                                    lon: parseFloat(foundStop.lon) || 0,
+                                    stop_order: index + 1,
+                                    arrival_time: foundStop.arrival_time || '--:--',
+                                    distance: foundStop.distance || 0
+                                };
+                            } else {
+                                console.warn(`Stop not found for ID: ${stopId}. Available IDs:`, stops.map(s => s.id));
+                                // Fallback: use the original database stop data
+                                return {
+                                    stop_id: stop.stop_id || stopId,
+                                    stop_name: stop.stop_name || stop.name || `Stop ${index + 1}`,
+                                    stop_code: stop.stop_code || `S${index + 1}`,
+                                    lat: parseFloat(stop.lat) || 0,
+                                    lon: parseFloat(stop.lon) || 0,
+                                    stop_order: index + 1,
+                                    arrival_time: stop.arrival_time || '--:--',
+                                    distance: stop.distance || 0
+                                };
+                            }
+                        });
                         
                         this.updateMapWithRealData(processedStops, schedule, modalElement);
                     } else {
@@ -3658,20 +3931,55 @@
                 });
         },
 
-        // Update map with real database data
+        // Update map with real database data using Leaflet + OSRM (same as admin dashboard)
         updateMapWithRealData: function(stops, schedule, modalElement) {
-            console.log('Updating map with stops:', stops);
+            console.log('Updating Leaflet map with OSRM routing for stops:', stops);
             if (!stops || !Array.isArray(stops) || stops.length === 0) {
                 console.warn('No valid stops provided to updateMapWithRealData');
                 this.updateMapWithDefaultData(schedule, modalElement);
                 return;
             }
+            
             const mapContainer = modalElement.querySelector('.map-container');
             const stopsTimeline = modalElement.querySelector('.stops-timeline');
             
-            // Update map with real route path
+            // Sort stops by sequence/order to ensure proper ordering
+            console.log('Original stops order:', stops);
+            console.log('Detailed stop data:', stops.map((stop, index) => ({
+                originalIndex: index,
+                stop_name: stop.stop_name,
+                stop_order: stop.stop_order,
+                stop_sequence: stop.stop_sequence,
+                stop_id: stop.stop_id,
+                id: stop.id,
+                lat: stop.lat,
+                lng: stop.lon
+            })));
+            
+            // Use the original stops order from database to maintain correct route sequence
+            // Don't sort - use the order as returned from the database
+            const orderedStops = [...stops];
+            console.log('Using original database order for stops:', orderedStops.map((stop, index) => ({
+                originalIndex: index,
+                stop_name: stop.stop_name,
+                stop_order: stop.stop_order,
+                stop_sequence: stop.stop_sequence,
+                stop_id: stop.stop_id,
+                position: stop.position,
+                id: stop.id
+            })));
+            
+            // Show all stops like admin dashboard - no filtering
+            const sequencedStops = orderedStops.map((stop, index) => ({
+                ...stop,
+                sequence_number: index + 1,
+                original_sequence: index + 1
+            }));
+            
+            console.log('Final sequencedStops for Route Order display:', sequencedStops.map((s, i) => `${i+1}: ${s.stop_name} (${s.lat}, ${s.lon})`));
+            
+            // Update map with Leaflet
             if (mapContainer) {
-                // Create a unique ID for the map container
                 const mapId = `routeMap_${Date.now()}`;
                 
                 // Clear existing content and set up the map container
@@ -3679,17 +3987,18 @@
                     <div id="${mapId}" style="height: 400px; width: 100%; border-radius: 8px; overflow: hidden;"></div>
                     <div class="map-legend" style="margin-top: 10px; text-align: center; font-size: 12px; color: #666;">
                         <span style="display: inline-flex; align-items: center; margin: 0 10px;">
-                            <span style="display: inline-block; width: 12px; height: 12px; background-color: #4CAF50; border-radius: 50%; margin-right: 5px;"></span>
+                            <span style="display: inline-block; width: 12px; height: 16px; background-color: #2196F3; border-radius: 50% 50% 50% 0; 
+                                  transform: rotate(-45deg); margin-right: 5px; border: 1px solid white;"></span>
                             Bus Stops
                         </span>
                         <span style="display: inline-flex; align-items: center; margin: 0 10px;">
                             <span style="display: inline-block; width: 12px; height: 12px; background-color: #2196F3; margin-right: 5px;"></span>
-                            Route Path
+                            Route Line
                         </span>
                     </div>
                 `;
 
-                // Initialize the map after ensuring Leaflet is loaded
+                // Initialize Leaflet map (same as admin dashboard)
                 const initMap = () => {
                     if (!window.L) {
                         console.error('Leaflet not loaded');
@@ -3713,43 +4022,24 @@
                     // Create a feature group to store the route and markers
                     const routeGroup = L.featureGroup().addTo(map);
 
-                    // Add markers for each stop
-                    const stopMarkers = [];
+                    // Process stops and create markers
+                    const validStops = [];
                     const stopLatLngs = [];
                     
-                    // Function to get route from OSRM
-                    const getRoute = (coordinates) => {
-                        const coords = coordinates.map(coord => `${coord.lng},${coord.lat}`).join(';');
-                        const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
-                        
-                        return fetch(url)
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.routes && data.routes[0]) {
-                                    return data.routes[0].geometry.coordinates;
-                                }
-                                return [];
-                            })
-                            .catch(error => {
-                                console.error('Error fetching route:', error);
-                                return [];
-                            });
-                    };
-
-                    // Define fallback coordinates (Anna Nagar area as center)
-                    const fallbackCoords = [
-                        [13.0902, 80.2124], // Anna Nagar Bus Depot
-                        [13.0881, 80.2104], // Thirumangalam
-                        [13.0847, 80.2083], // Anna Nagar Roundtana
-                        [13.0805, 80.2222]  // Shenoy Nagar
-                    ];
-
-                    // Process each stop from the API response
-                    stops.forEach((stop, index) => {
-                        // Try to get coordinates, fall back to default if missing
+                    sequencedStops.forEach((stop, index) => {
                         let lat, lng;
                         
-                        // First try lat/lon (from database), then latitude/longitude (fallback)
+                        // Debug: Log all coordinate fields
+                        console.log(`Stop ${index + 1} (${stop.stop_name}):`, {
+                            lat: stop.lat,
+                            lon: stop.lon,
+                            latitude: stop.latitude,
+                            longitude: stop.longitude,
+                            lat_type: typeof stop.lat,
+                            lon_type: typeof stop.lon
+                        });
+                        
+                        // Try to get coordinates
                         if (stop.lat !== undefined && stop.lon !== undefined) {
                             lat = parseFloat(stop.lat);
                             lng = parseFloat(stop.lon);
@@ -3758,53 +4048,55 @@
                             lng = parseFloat(stop.longitude);
                         }
                         
-                        // If coordinates are still invalid, use fallback with offset
-                        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
-                            const fallbackIndex = index % fallbackCoords.length;
-                            lat = fallbackCoords[fallbackIndex][0] + (Math.random() * 0.01 - 0.005); // Small random offset
-                            lng = fallbackCoords[fallbackIndex][1] + (Math.random() * 0.01 - 0.005);
-                            console.warn(`Using fallback coordinates for stop: ${stop.stop_name || 'Stop ' + (index + 1)}`);
+                        // Better coordinate validation - only use fallback if truly invalid
+                        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0 || 
+                            lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                            console.warn(`Invalid coordinates for stop: ${stop.stop_name || 'Stop ' + (index + 1)}, using fallback`);
+                            // Use Anna Nagar area with offset
+                            lat = 13.0847 + (index * 0.01);
+                            lng = 80.2083 + (index * 0.01);
+                        } else {
+                            console.log(`Using valid coordinates for stop: ${stop.stop_name || 'Stop ' + (index + 1)}: ${lat}, ${lng}`);
                         }
                         
+                        validStops.push({ lat, lng, ...stop });
                         const latLng = L.latLng(lat, lng);
                         stopLatLngs.push(latLng);
 
-                        // Create a custom icon for the stop
+                        // Create a custom teardrop-shaped icon (same as admin dashboard image)
                         const stopIcon = L.divIcon({
-                            className: 'bus-stop-icon',
-                            html: `<div style="background-color: #4CAF50; color: white; width: 24px; height: 24px; border-radius: 50%; 
-                                  border: 2px solid white; display: flex; align-items: center; justify-content: center; 
-                                  font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${index + 1}</div>`,
-                            iconSize: [24, 24],
-                            iconAnchor: [12, 12],
-                            popupAnchor: [0, -12]
+                            className: 'bus-stop-teardrop',
+                            html: `<div style="position: relative;">
+                                <div style="background-color: #2196F3; color: white; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; 
+                                      transform: rotate(-45deg); border: 2px solid white; display: flex; align-items: center; justify-content: center; 
+                                      box-shadow: 0 2px 4px rgba(0,0,0,0.3); margin: 10px;">
+                                    <div style="transform: rotate(45deg); font-size: 10px; font-weight: bold;">●</div>
+                                </div>
+                            </div>`,
+                            iconSize: [30, 40],
+                            iconAnchor: [15, 40],
+                            popupAnchor: [0, -40]
                         });
 
                         // Add marker to the map
                         const marker = L.marker(latLng, { icon: stopIcon })
                             .addTo(routeGroup)
                             .bindPopup(`
-                                <div style="min-width: 180px;">
+                                <div style="min-width: 180px; padding: 8px;">
                                     <h4 style="margin: 0 0 5px 0; color: #333; font-size: 14px;">
-                                        <i class="fas fa-map-marker-alt"></i> ${stop.name}
+                                        <i class="fas fa-map-marker-alt"></i> ${stop.stop_name || 'Bus Stop'}
                                     </h4>
-                                    <p style="margin: 5px 0; font-size: 12px;">
-                                        <i class="far fa-clock"></i> Stop #${index + 1}
-                                    </p>
+                                    ${stop.address ? `<p style="margin: 5px 0; font-size: 12px; color: #666;">
+                                        <i class="fas fa-location-dot"></i> ${stop.address}
+                                    </p>` : ''}
+                                    ${stop.arrival_time ? `<p style="margin: 5px 0; font-size: 12px; color: #666;"><i class="far fa-clock"></i> ${stop.arrival_time}</p>` : ''}
                                 </div>
                             `);
-
-                        stopMarkers.push(marker);
                     });
-
-                    // Draw the route line if we have at least 2 points
-                    if (stopLatLngs.length >= 2) {
-                        const routeLine = L.polyline(stopLatLngs, {
-                            color: '#2196F3',
-                            weight: 4,
-                            opacity: 0.7,
-                            lineJoin: 'round'
-                        }).addTo(routeGroup);
+                    
+                    // Create OSRM route (same as admin dashboard)
+                    if (validStops.length >= 2) {
+                        this.drawOSRMRoute(validStops, map, routeGroup);
                     }
 
                     // Fit the map to show all markers with padding
@@ -3817,22 +4109,19 @@
 
                     // Add scale control
                     L.control.scale({ position: 'bottomright' }).addTo(map);
-
                 };
 
                 // Initialize the map
                 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                    // If document is already loaded, initialize map immediately
                     initMap();
                 } else {
-                    // Wait for the document to be fully loaded
                     document.addEventListener('DOMContentLoaded', initMap);
                 }
             }
             
-            // Update stops timeline with real data
+            // Update stops timeline with ordered data
             if (stopsTimeline) {
-                if (!stops || stops.length === 0) {
+                if (!sequencedStops || sequencedStops.length === 0) {
                     stopsTimeline.innerHTML = `
                         <div class="no-stops-message">
                             <i class="fas fa-info-circle"></i>
@@ -3840,41 +4129,93 @@
                         </div>
                     `;
                 } else {
-                    stopsTimeline.innerHTML = stops.map((stop, index) => `
-                        <div class="stop-item" data-stop-id="${stop.stop_id || index}" 
-                             style="padding: 10px; border-bottom: 1px solid #eee; margin-bottom: 8px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <div style="display: flex; align-items: center;">
-                                    <div style="width: 24px; height: 24px; background-color: #4CAF50; 
-                                         color: white; border-radius: 50%; display: flex; align-items: center; 
-                                         justify-content: center; margin-right: 10px; font-weight: bold;">
-                                        ${index + 1}
-                                    </div>
-                                    <div class="stop-name" style="font-weight: 500;">
-                                        <i class="fas fa-map-marker-alt" style="margin-right: 5px; color: #666;"></i>
-                                        ${stop.stop_name || `Stop ${index + 1}`}
-                                    </div>
+                    stopsTimeline.innerHTML = `
+                        <div class="route-stops-container" style="margin-top:12px; padding-top:12px; border-top:1px solid #113343;">
+                            <div style="max-height:200px; overflow-y:auto;">
+                    `;
+                    
+                    sequencedStops.forEach((stop, index) => {
+                        stopsTimeline.innerHTML += `
+                            <div style="display:flex; align-items:flex-start; padding:8px 0; position:relative;">
+                                <div style="display:flex; flex-direction:column; align-items:center; margin-right:16px;">
+                                    <div style="width:20px; height:20px; background:#042235; border:2px solid #7fe3ff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#7fe3ff; font-size:11px;">${index + 1}</div>
                                 </div>
-                                <div class="stop-time" style="font-size: 0.9em; color: #666;">
-                                    ${stop.arrival_time || '--:--'}
+                                <div style="flex:1; padding-top:2px;">
+                                    <div style="font-weight:500; color:#000000; font-size:14px;">${stop.stop_name || 'Bus Stop'}</div>
+                                    <div class="small" style="color:#333333; font-size:12px;">${stop.lat ? stop.lat.toFixed(6) : '0.000000'}, ${stop.lon ? stop.lon.toFixed(6) : '0.000000'}</div>
                                 </div>
                             </div>
-                            ${(stop.stop_code || stop.distance) ? `
-                            <div style="margin-left: 34px; font-size: 0.85em; color: #777;">
-                                ${stop.stop_code ? `
-                                <span class="stop-code" style="margin-right: 10px;">
-                                    <i class="fas fa-hashtag"></i> ${stop.stop_code}
-                                </span>` : ''}
-                                ${stop.distance ? `
-                                <span class="stop-distance">
-                                    <i class="fas fa-route"></i> ${stop.distance} km
-                                    ${index > 0 ? 'from previous' : 'from start'}
-                                </span>` : ''}
-                            </div>` : ''}
+                        `;
+                    });
+                    
+                    stopsTimeline.innerHTML += `
+                            </div>
                         </div>
-                    `).join('');
+                    `;
                 }
             }
+        },
+        
+        // Draw OSRM route (same as admin dashboard)
+        drawOSRMRoute: function(stops, map, routeGroup) {
+            try {
+                console.log('Original stops order for OSRM:', stops.map((s, i) => `${i+1}: ${s.stop_name} (${s.lat}, ${s.lng})`));
+                
+                // Limit stops to avoid OSRM API limits
+                const limitedStops = stops.slice(0, 10); // OSRM limit
+                console.log('Limited stops order for OSRM:', limitedStops.map((s, i) => `${i+1}: ${s.stop_name} (${s.lat}, ${s.lng})`));
+                
+                // Create coordinates string for OSRM API
+                const coordinates = limitedStops.map(stop => `${stop.lng},${stop.lat}`).join(';');
+                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&alternatives=false`;
+                
+                console.log('Fetching OSRM route:', osrmUrl);
+                
+                // Fetch route from OSRM
+                fetch(osrmUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.routes && data.routes[0]) {
+                            const route = data.routes[0];
+                            const geometry = route.geometry;
+                            
+                            // Convert GeoJSON coordinates to Leaflet format [lat, lng]
+                            const routeCoords = geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                            
+                            // Draw the route line
+                            const routeLine = L.polyline(routeCoords, {
+                                color: '#2196F3', // Google Maps blue
+                                weight: 6,
+                                opacity: 0.9,
+                                smoothFactor: 1
+                            }).addTo(routeGroup);
+                            
+                            console.log('OSRM route drawn successfully');
+                        } else {
+                            console.warn('No OSRM route found, using fallback line');
+                            this.drawFallbackLine(stops, routeGroup);
+                        }
+                    })
+                    .catch(error => {
+                        console.warn('OSRM routing failed, using fallback:', error);
+                        this.drawFallbackLine(stops, routeGroup);
+                    });
+                    
+            } catch (error) {
+                console.warn('OSRM routing error, using fallback:', error);
+                this.drawFallbackLine(stops, routeGroup);
+            }
+        },
+        
+        // Fallback to straight lines
+        drawFallbackLine: function(stops, routeGroup) {
+            const routeCoords = stops.map(s => [s.lat, s.lng]);
+            L.polyline(routeCoords, {
+                color: '#2196F3',
+                weight: 4,
+                opacity: 0.7,
+                dashArray: '10, 10'
+            }).addTo(routeGroup);
         },
 
         // Update map with default fallback data
@@ -4261,55 +4602,23 @@
         }
       };
 
-      // Translation dictionary
-      const translations = {
-        en: {
-          dashboard: "Dashboard",
-          assignments: "Assignments",
-          schedule: "Schedule",
-          profile: "Profile",
-          settings: "Settings",
-          logout: "Logout",
-          changePassword: "Change Password",
-          help: "Help",
-          language: "Language",
-          currentTrip: "Current Trip",
-          recentActivity: "Recent Activity",
-          viewAll: "View All",
-          noUpcomingTrips: "No upcoming trips scheduled",
-          noRecentActivity: "No recent activity",
-          myProfile: "My Profile"
-        },
-        ta: {
-          dashboard: "டாஷ்போர்டு",
-          assignments: "பணிகள்",
-          schedule: "அட்டவணை",
-          profile: "சுயவிவரம்",
-          settings: "அமைப்புகள்",
-          logout: "வெளியேறு",
-          changePassword: "கடவுச்சொல் மாற்றம்",
-          help: "உதவி",
-          language: "மொழி",
-          currentTrip: "தற்போதைய பயணம்",
-          upcomingTrips: "வரவிருக்கும் பயணங்கள்",
-          recentActivity: "சமீபத்திய செயல்பாடு",
-          viewAll: "அனைத்தையும் காட்டு",
-          noUpcomingTrips: "வரவிருக்கும் பயணங்கள் எதுவும் இல்லை",
-          noRecentActivity: "சமீபத்திய செயல்பாடு இல்லை",
-          myProfile: "என் சுயவிவரம்"
-        }
-      };
-
-      // Function to update all translatable elements
-      function updatePageLanguage(lang) {
-        const elements = document.querySelectorAll('[data-translate]');
-        elements.forEach(el => {
-          const key = el.getAttribute('data-translate');
-          if (translations[lang] && translations[lang][key]) {
-            el.textContent = translations[lang][key];
+      // Update page language function
+      function updatePageLanguage(language) {
+        document.querySelectorAll('[data-translate]').forEach(element => {
+          const key = element.getAttribute('data-translate');
+          if (translations[key] && translations[key][language]) {
+            element.textContent = translations[key][language];
           }
         });
       }
+
+      // Initialize language
+      document.addEventListener('DOMContentLoaded', function() {
+        const savedLanguage = localStorage.getItem('preferredLanguage') || 'en';
+        updatePageLanguage(savedLanguage);
+      });
+
+      // Driver Dashboard Application
 
       // Language Toggle Functionality
       document.addEventListener('DOMContentLoaded', function() {
@@ -4412,5 +4721,9 @@
       });
     });
   </script>
+  
+  <!-- Leaflet JS (same as admin dashboard) -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
 </body>
 </html>
