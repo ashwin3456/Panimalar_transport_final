@@ -270,6 +270,7 @@
     
     <div style="display:flex;justify-content:space-between;align-items:center">
       <button class="btn-mini" onclick="toggleScheduleManagement()">Schedule Management</button>
+    
     </div>
     
     <div style="height:1px;background:#113343;margin:12px 0"></div>
@@ -279,7 +280,6 @@
     </div>
     
     <div style="height:1px;background:#113343;margin:12px 0"></div>
-    <div class="muted">All data is permanently saved to MySQL database.</div>
   </div>
   <div id="map"></div>
 </div>
@@ -357,17 +357,15 @@
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h3>Schedule Management</h3>
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-right:20px">
+        <button class="small-btn" onclick="showScheduleList()">View Schedules</button>
         <button onclick="saveSchedule()" class="small-btn">Save Schedule</button>
         <button class="btn-mini" onclick="closeScheduleModal()">Close</button>
+        
       </div>
     </div>
     <div style="margin-top:8px">
       <label>Select Date</label>
       <input type="date" id="scheduleDate" />
-      <div class="controls-compact">
-        <button onclick="loadSchedule()">Load Schedule</button>
-        <button onclick="saveSchedule()">Save Schedule</button>
-      </div>
       
       <label style="margin-top:10px">Route Type</label>
       <select id="routeType">
@@ -465,6 +463,29 @@
       
       <label style="margin-top:15px">Current Announcements</label>
       <div id="modalAnnouncementList" style="max-height:200px; overflow-y:auto; border:1px solid #113343; padding:8px; border-radius:4px; background:#042235;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule List modal (central) -->
+<div id="scheduleListModal" class="modal-overlay" style="display:none; z-index: 10001">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3>View All Schedules</h3>
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-right:20px">
+        <button class="btn-mini" onclick="closeScheduleListModal()">Close</button>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <label>Select Date to View Schedules</label>
+      <input type="date" id="scheduleListDate" onchange="loadScheduleListForDate()" />
+      
+      <div style="margin-top:15px">
+        <label>All Schedules for <span id="selectedDateDisplay">Today</span></label>
+        <div id="scheduleListDisplay" style="max-height:400px; overflow-y:auto; border:1px solid #113343; padding:8px; border-radius:4px; background:#042235;">
+          <div class="muted">Select a date to view schedules</div>
+        </div>
       </div>
     </div>
   </div>
@@ -2569,6 +2590,181 @@ function closeScheduleModal() {
   document.getElementById('scheduleModal').style.display = 'none';
 }
 
+// Schedule List Functions
+function showScheduleList() {
+  document.getElementById('scheduleListModal').style.display = 'flex';
+  // Set today's date as default
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('scheduleListDate').value = today;
+  document.getElementById('selectedDateDisplay').textContent = 'Today';
+  loadScheduleListForDate();
+}
+
+function closeScheduleListModal() {
+  document.getElementById('scheduleListModal').style.display = 'none';
+}
+
+function loadScheduleListForDate() {
+  const date = document.getElementById('scheduleListDate').value;
+  if (!date) {
+    document.getElementById('scheduleListDisplay').innerHTML = '<div class="muted">Please select a date</div>';
+    return;
+  }
+  
+  // Update display text
+  const dateObj = new Date(date);
+  const today = new Date();
+  const isToday = dateObj.toDateString() === today.toDateString();
+  document.getElementById('selectedDateDisplay').textContent = isToday ? 'Today' : dateObj.toLocaleDateString();
+  
+  // Show loading
+  document.getElementById('scheduleListDisplay').innerHTML = '<div class="muted">Loading schedules...</div>';
+  
+  // Load schedules from API
+  fetch(`./api/data.php?action=get_schedules&date=${date}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        renderScheduleListDisplay(data.schedules || []);
+      } else {
+        document.getElementById('scheduleListDisplay').innerHTML = '<div class="muted">Failed to load schedules</div>';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading schedules:', error);
+      document.getElementById('scheduleListDisplay').innerHTML = '<div class="muted">Error loading schedules</div>';
+    });
+}
+
+function renderScheduleListDisplay(daySchedule) {
+  const display = document.getElementById('scheduleListDisplay');
+  display.innerHTML = '';
+  
+  if (daySchedule.length === 0) {
+    display.innerHTML = '<div class="muted">No schedules for this date</div>';
+    return;
+  }
+  
+  daySchedule.forEach(schedule => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.style.marginBottom = '10px';
+    div.style.padding = '10px';
+    div.style.border = '1px solid #113343';
+    div.style.borderRadius = '4px';
+    div.style.background = '#042235';
+    
+    div.innerHTML = `
+      <div>
+        <div>
+          <strong>${schedule.route_type === 'Morning To College' ? 'Morning to College' : 'Return Routes'}</strong> - ${schedule.time_slot}
+          <span class="route-category" style="background:#0a4d5f; padding:2px 6px; border-radius:3px; font-size:11px; margin-left:8px;">${schedule.route_category || 'All Routes'}</span>
+        </div>
+        <div class="small" style="margin: 4px 0; font-weight: bold; color: #9fc9e6;">
+          ${(() => {
+            const names = (schedule.route_name || '').split(/[\n,]/).filter(n => n.trim());
+            const numbers = (schedule.route_number || '').split(/[\n,]/).filter(n => n.trim());
+            if (names.length === 0) return 'No routes specified';
+            return names.map((name, i) => {
+              const num = numbers[i] || '';
+              return `${i + 1}. ${name.trim()}${num ? ' - ' + num.trim() : ''}`;
+            }).join('<br>');
+          })()}
+        </div>
+        <div class="small muted" style="margin-left: 10px; font-size:12px;">
+        </div>
+      </div>
+      <div style="display: flex; gap: 5px; margin-top: 8px;">
+        <button class="btn-mini" onclick="editScheduleFromList('${schedule.id}')">Edit</button>
+        <button class="btn-mini btn-danger" onclick="removeScheduleFromList('${schedule.id}')">Remove</button>
+      </div>
+    `;
+    display.appendChild(div);
+  });
+}
+
+async function editScheduleFromList(scheduleId) {
+  // First, fetch the schedule data from API
+  const date = document.getElementById('scheduleListDate').value;
+  
+  try {
+    const response = await fetch(`./api/data.php?action=get_schedules&date=${date}`);
+    const data = await response.json();
+    
+    if (data.success && data.schedules) {
+      // Find the schedule to edit
+      const scheduleToEdit = data.schedules.find(s => s.id == scheduleId);
+      
+      if (scheduleToEdit) {
+        // Normalize to frontend format and add to schedules array if not already there
+        const normalizedSchedule = {
+          id: scheduleToEdit.id,
+          date: scheduleToEdit.schedule_date || scheduleToEdit.date,
+          routeType: scheduleToEdit.route_type || scheduleToEdit.routeType,
+          timeSlot: scheduleToEdit.time_slot || scheduleToEdit.timeSlot,
+          routeCategory: scheduleToEdit.route_category || scheduleToEdit.routeCategory || 'All Routes',
+          selectedBuses: scheduleToEdit.bus_id ? [scheduleToEdit.bus_id] : [],
+          busName: scheduleToEdit.bus_name || scheduleToEdit.route_name,
+          routeNumber: scheduleToEdit.route_number,
+          busCount: scheduleToEdit.bus_count || 1
+        };
+        
+        // Add to schedules array if not already present
+        const existingIndex = schedules.findIndex(s => s.id === scheduleId);
+        if (existingIndex === -1) {
+          schedules.push(normalizedSchedule);
+        } else {
+          schedules[existingIndex] = normalizedSchedule;
+        }
+        
+        // Close the schedule list modal
+        closeScheduleListModal();
+        
+        // Open the schedule management modal
+        toggleScheduleManagement();
+        
+        // Set the date in the schedule form
+        document.getElementById('scheduleDate').value = normalizedSchedule.date;
+        
+        // Now edit the schedule
+        editSchedule(scheduleId);
+      } else {
+        alert('Schedule not found');
+      }
+    } else {
+      alert('Failed to load schedule data');
+    }
+  } catch (error) {
+    console.error('Error loading schedule for edit:', error);
+    alert('Error loading schedule. Please check console.');
+  }
+}
+
+async function removeScheduleFromList(scheduleId) {
+  if (!confirm('Confirm You Want To delete!.')) return;
+  
+  // Delete directly from database first
+  try {
+    const response = await fetch('./api/data.php?action=delete_schedule&id=' + encodeURIComponent(scheduleId));
+    const result = await response.json();
+    
+    if (result.success) {
+      // Also remove from in-memory schedules array if present
+      schedules = schedules.filter(s => s.id !== scheduleId);
+      
+      // Refresh the list display in View All Schedules modal
+      loadScheduleListForDate();
+      
+      alert('Schedule removed successfully!');
+    } else {
+      alert('Failed to remove schedule: ' + (result.message || result.error || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error removing schedule:', error);
+    alert('Error removing schedule. Please check console.');
+  }
+}
+
 function loadSchedule() {
   const date = document.getElementById('scheduleDate').value;
   if (!date) {
@@ -2587,7 +2783,19 @@ function loadSchedule() {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        schedules = data.schedules || [];
+        // Normalize API data to frontend format
+        const apiSchedules = data.schedules || [];
+        schedules = apiSchedules.map(s => ({
+          id: s.id,
+          date: s.schedule_date || s.date,
+          routeType: s.route_type || s.routeType,
+          timeSlot: s.time_slot || s.timeSlot,
+          routeCategory: s.route_category || s.routeCategory,
+          selectedBuses: s.bus_id ? [s.bus_id] : [], // If API returns bus_id
+          busName: s.bus_name,
+          routeNumber: s.route_number,
+          busCount: s.bus_count || 1
+        }));
         renderScheduleList(schedules);
         alert(`Loaded ${schedules.length} schedules for ${date}`);
       } else {
@@ -2645,7 +2853,7 @@ function saveSchedule() {
   });
 }
 
-function addTimeSlotSchedule() {
+async function addTimeSlotSchedule() {
   const date = document.getElementById('scheduleDate').value;
   const routeType = document.getElementById('routeType').value;
   const timeSlot = document.getElementById('timeSlot').value;
@@ -2662,7 +2870,84 @@ function addTimeSlotSchedule() {
     return;
   }
   
-   // Set route category with proper case and ensure it matches database enum
+  // First, check database for existing schedules on this date and time slot
+  try {
+    const response = await fetch('./api/data.php?action=get_schedules&date=' + encodeURIComponent(date));
+    const data = await response.json();
+    
+    if (data.success && data.schedules) {
+      // Find schedules for the same time slot
+      const existingSchedulesForTimeSlot = data.schedules.filter(s => 
+        s.time_slot === timeSlot || s.timeSlot === timeSlot
+      );
+      
+      // Check if any selected bus is already in an existing schedule
+      const duplicateBuses = [];
+      selectedBuses.forEach(busId => {
+        const bus = findBus(busId);
+        if (!bus) return;
+        
+        const isAlreadyScheduled = existingSchedulesForTimeSlot.some(schedule => {
+          // Match by bus name
+          if (schedule.bus_name && schedule.bus_name === bus.name) {
+            return true;
+          }
+          // Match by route number
+          if (schedule.route_number && bus.routeNo) {
+            const scheduleRoutes = schedule.route_number.toString().split(/[\n,]/);
+            return scheduleRoutes.some(r => r.trim() === bus.routeNo.toString());
+          }
+          return false;
+        });
+        
+        if (isAlreadyScheduled) {
+          duplicateBuses.push(bus.name);
+        }
+      });
+      
+      if (duplicateBuses.length > 0) {
+        alert(`Already scheduled! The following bus(es) are already scheduled for ${timeSlot} on ${date}:\n\n${duplicateBuses.join('\n')}\n\nPlease select different buses or a different time slot.`);
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('Error checking database for duplicates:', error);
+    // Continue anyway - will check in-memory schedules as fallback
+  }
+  
+  // Also check in-memory schedules (for schedules added this session but not yet saved)
+  const inMemoryDuplicates = [];
+  const inMemorySchedulesForTimeSlot = schedules.filter(s => {
+    const schedDate = s.date || s.schedule_date;
+    const schedTime = s.timeSlot || s.time_slot;
+    return schedDate === date && schedTime === timeSlot;
+  });
+  
+  selectedBuses.forEach(busId => {
+    const bus = findBus(busId);
+    if (!bus) return;
+    
+    const isAlreadyScheduled = inMemorySchedulesForTimeSlot.some(schedule => {
+      if (schedule.selectedBuses && schedule.selectedBuses.length > 0) {
+        return schedule.selectedBuses.includes(busId);
+      }
+      if (schedule.busName && schedule.busName === bus.name) {
+        return true;
+      }
+      return false;
+    });
+    
+    if (isAlreadyScheduled) {
+      inMemoryDuplicates.push(bus.name);
+    }
+  });
+  
+  if (inMemoryDuplicates.length > 0) {
+    alert(`Already scheduled! The following bus(es) are already scheduled for ${timeSlot} on ${date}:\n\n${inMemoryDuplicates.join('\n')}\n\nPlease select different buses or a different time slot.`);
+    return;
+  }
+  
+  // Set route category with proper case and ensure it matches database enum
   let routeCategoryDb = 'All Routes';
   if (routeCategory.toLowerCase().includes('main')) routeCategoryDb = 'Main Routes';
   else if (routeCategory.toLowerCase().includes('common')) routeCategoryDb = 'Common Routes';
@@ -2686,12 +2971,7 @@ function addTimeSlotSchedule() {
   // Debug log
   console.log('Adding new schedule:', schedule);
   
-  // Remove any existing schedules with the same date, routeType, and timeSlot
-  schedules = schedules.filter(s => 
-    !(s.date === date && s.routeType === routeType && s.timeSlot === timeSlot)
-  );
-  
-  // Add the new schedule
+  // Add the new schedule (duplicate check already done above)
   schedules.push(schedule);
   
   // Sort schedules by time slot
@@ -2708,20 +2988,21 @@ function addTimeSlotSchedule() {
   populateBusSelectionList();
   updateSelectedBusesDisplay();
   
-    // Auto-save to server
-  tryAutoSave().then(() => {
+  // Auto-save to server
+  try {
+    await tryAutoSave();
     console.log('Schedule saved successfully');
-  const busNames = selectedBuses.map(busId => {
-    const bus = findBus(busId);
-    return bus ? `${bus.name} - ${bus.routeNo || '—'}` : busId;
-  }).join(', ');
-  
-  alert(`Schedule added: ${routeType} ${timeSlot} - ${routeCategory} (${selectedBuses.length} buses: ${busNames})`);
-   }).catch(error => {
+    const busNames = selectedBuses.map(busId => {
+      const bus = findBus(busId);
+      return bus ? `${bus.name} - ${bus.routeNo || '—'}` : busId;
+    }).join(', ');
+    
+    alert(`Schedule added: ${routeType} ${timeSlot} - ${routeCategory} (${selectedBuses.length} buses: ${busNames})`);
+  } catch (error) {
     console.error('Failed to save schedule:', error);
     alert('Failed to save schedule. Please check console for details.');
-  });
-};
+  }
+}
 
 function clearCurrentSchedule() {
   const date = document.getElementById('scheduleDate').value;
@@ -2797,18 +3078,51 @@ function renderScheduleList(daySchedule) {
   });
 }
 
-function removeSchedule(scheduleId) {
-  if (!confirm('Remove this schedule?')) return;
+async function removeSchedule(scheduleId) {
+  if (!confirm('Confirm You Want To delete!.')) return;
   
+  // First, delete from database using specific endpoint
+  try {
+    const response = await fetch('./api/data.php?action=delete_schedule&id=' + encodeURIComponent(scheduleId));
+    const result = await response.json();
+    
+    if (!result.success && !result.message?.includes('not found')) {
+      console.error('Database deletion issue:', result);
+    }
+  } catch (error) {
+    console.error('Error deleting from database:', error);
+  }
+  
+  // Remove from in-memory array
   schedules = schedules.filter(s => s.id !== scheduleId);
+  
+  // Get current date for display refresh
   const date = document.getElementById('scheduleDate').value;
   renderScheduleList(schedules.filter(s => s.date === date));
-  tryAutoSave();
+  
+  // Also save remaining schedules to ensure consistency
+  try {
+    await tryAutoSave();
+    alert('Schedule removed successfully!');
+  } catch (error) {
+    console.error('Failed to save after removal:', error);
+  }
 }
 
 function editSchedule(scheduleId) {
-  const schedule = schedules.find(s => s.id === scheduleId);
-  if (!schedule) return;
+  console.log('Editing schedule ID:', scheduleId, 'Type:', typeof scheduleId);
+  console.log('Available schedules:', schedules);
+  
+  // Find schedule with loose equality to handle string/number mismatch
+  const schedule = schedules.find(s => s.id == scheduleId);
+  
+  if (!schedule) {
+    console.error('Schedule not found for ID:', scheduleId);
+    alert('Schedule not found. Please try loading the schedule again.');
+    return;
+  }
+  
+  console.log('Found schedule:', schedule);
   
   // Populate form with existing schedule data
   document.getElementById('scheduleDate').value = schedule.date;
@@ -2822,7 +3136,7 @@ function editSchedule(scheduleId) {
   updateSelectedBusesDisplay();
   
   // Remove the old schedule from the array (it will be re-added when saved)
-  schedules = schedules.filter(s => s.id !== scheduleId);
+  schedules = schedules.filter(s => s.id != scheduleId);
   
   // Update the display
   renderScheduleList(schedules.filter(s => s.date === schedule.date));

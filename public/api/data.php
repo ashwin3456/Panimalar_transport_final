@@ -99,8 +99,29 @@ if ($method === 'GET') {
         if ($driverResult->num_rows > 0) {
           $driver = $driverResult->fetch_assoc();
           $response['data']['driver_id'] = $driver['id'];
-          // Note: bus_number and license_number don't exist in the current schema
-          $response['data']['bus_number'] = 'Not assigned';
+          
+          // Get assigned bus for this driver
+          $busStmt = $conn->prepare("
+            SELECT b.id, b.name, b.route_no 
+            FROM buses b
+            JOIN bus_drivers bd ON b.id = bd.bus_id
+            WHERE bd.driver_id = ?
+            LIMIT 1
+          ");
+          $busStmt->bind_param('s', $driver['id']);
+          $busStmt->execute();
+          $busResult = $busStmt->get_result();
+          
+          if ($busResult->num_rows > 0) {
+            $bus = $busResult->fetch_assoc();
+            $response['data']['bus_number'] = $bus['name'] . ($bus['route_no'] ? ' - ' . $bus['route_no'] : '');
+            $response['data']['bus_id'] = $bus['id'];
+          } else {
+            $response['data']['bus_number'] = 'Not assigned';
+            $response['data']['bus_id'] = null;
+          }
+          
+          $busStmt->close();
           $response['data']['license_number'] = 'Not specified';
         }
         
@@ -115,6 +136,36 @@ if ($method === 'GET') {
     } catch (Exception $e) {
       http_response_code(500);
       echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+      exit;
+    }
+  }
+  // Delete a specific schedule
+  elseif ($action === 'delete_schedule') {
+    $scheduleId = $_GET['id'] ?? '';
+    
+    if (empty($scheduleId)) {
+      http_response_code(400);
+      echo json_encode(['error' => 'Schedule ID is required']);
+      exit;
+    }
+    
+    try {
+      $stmt = $conn->prepare("DELETE FROM bus_schedules WHERE external_id = ? OR id = ?");
+      $stmt->bind_param('si', $scheduleId, $scheduleId);
+      $stmt->execute();
+      $deletedCount = $stmt->affected_rows;
+      $stmt->close();
+      $conn->close();
+      
+      if ($deletedCount > 0) {
+        echo json_encode(['success' => true, 'message' => 'Schedule deleted successfully']);
+      } else {
+        echo json_encode(['success' => false, 'message' => 'Schedule not found']);
+      }
+      exit;
+    } catch (Exception $e) {
+      http_response_code(500);
+      echo json_encode(['error' => 'Failed to delete schedule: ' . $e->getMessage()]);
       exit;
     }
   }
@@ -422,6 +473,7 @@ if ($method === 'GET') {
             'route_name' => $row['route_name'],
             'route_number' => $row['route_number'],
             'route_category' => $row['route_category'],
+            'bus_id' => $matchedBus['id'], // Add bus_id for route stops lookup
             'bus_name' => $matchedBus['name'],
             'bus_route_number' => $matchedBus['route_no'],
             'boarding_stop_name' => 'Not specified',
@@ -449,8 +501,102 @@ if ($method === 'GET') {
       exit;
     }
   }
+  // Get route stops for specific bus
+  elseif ($action === 'get_route_stops') {
+    $busId = $_GET['bus_id'] ?? '';
+    $scheduleId = $_GET['schedule_id'] ?? '';
+    
+    if (empty($busId)) {
+      http_response_code(400);
+      echo json_encode(['error' => 'Bus ID is required']);
+      exit;
+    }
+    
+    try {
+      require __DIR__ . '/../../Backend/db.php';
+      
+      // Get the specific bus details first
+      $busStmt = $conn->prepare("SELECT id, name, route_no, stops FROM buses WHERE id = ?");
+      $busStmt->bind_param('s', $busId);
+      $busStmt->execute();
+      $busResult = $busStmt->get_result();
+      
+      if ($busResult->num_rows === 0) {
+        echo json_encode(['success' => false, 'stops' => [], 'message' => 'Bus not found']);
+        exit;
+      }
+      
+      $bus = $busResult->fetch_assoc();
+      $busStops = [];
+      
+      // Method 1: Check if bus has stops stored as JSON in 'stops' column
+      if (!empty($bus['stops'])) {
+        $stopIds = json_decode($bus['stops'], true);
+        if (is_array($stopIds) && !empty($stopIds)) {
+          $placeholders = str_repeat('?,', count($stopIds) - 1) . '?';
+          $stopStmt = $conn->prepare("SELECT id, name, lat, lon FROM stops WHERE id IN ($placeholders) ORDER BY FIELD(id, $placeholders)");
+          $types = str_repeat('s', count($stopIds) * 2);
+          $stopStmt->bind_param($types, ...$stopIds, ...$stopIds);
+          $stopStmt->execute();
+          $stopResult = $stopStmt->get_result();
+          
+          while ($stop = $stopResult->fetch_assoc()) {
+            $busStops[] = [
+              'stop_id' => $stop['id'],
+              'stop_name' => $stop['name'],
+              'lat' => floatval($stop['lat']),
+              'lon' => floatval($stop['lon'])
+            ];
+          }
+          $stopStmt->close();
+        }
+      }
+      
+      // Method 2: If no stops in JSON, try to get from bus_stops table
+      if (empty($busStops)) {
+        $fallbackStmt = $conn->prepare("
+          SELECT s.id, s.name, s.lat, s.lon, bs.position 
+          FROM bus_stops bs 
+          JOIN stops s ON bs.stop_id = s.id 
+          WHERE bs.bus_id = ? 
+          ORDER BY bs.position ASC
+        ");
+        $fallbackStmt->bind_param('s', $busId);
+        $fallbackStmt->execute();
+        $fallbackResult = $fallbackStmt->get_result();
+        
+        while ($stop = $fallbackResult->fetch_assoc()) {
+          $busStops[] = [
+            'stop_id' => $stop['id'],
+            'stop_name' => $stop['name'],
+            'lat' => floatval($stop['lat']),
+            'lon' => floatval($stop['lon']),
+            'stop_order' => intval($stop['position'])
+          ];
+        }
+        $fallbackStmt->close();
+      }
+      
+      echo json_encode([
+        'success' => true,
+        'bus_id' => $busId,
+        'bus_name' => $bus['name'],
+        'stops' => $busStops,
+        'total_stops' => count($busStops)
+      ]);
+      
+      $busStmt->close();
+      $conn->close();
+      exit;
+      
+    } catch (Exception $e) {
+      http_response_code(500);
+      echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+      exit;
+    }
+  }
   
-  // Load data from MySQL database instead of JSON file
+   // Load data from MySQL database instead of JSON file
   try {
     require __DIR__ . '/../../Backend/db.php';
     
